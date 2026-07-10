@@ -5,7 +5,7 @@ export default function Layout() {
   return (
     <div style={{ display: "flex", minHeight: "100vh" }}>
       <Sidebar />
-      <main style={{ flex: 1, padding: "24px", background: "#f4f5f7", overflow: "auto" }}>
+      <main style={{ flex: 1, padding: "28px 32px", background: "var(--bg)", overflow: "auto", minWidth: 0 }}>
         <Outlet />
       </main>
     </div>

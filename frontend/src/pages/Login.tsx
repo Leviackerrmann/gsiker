@@ -11,118 +11,62 @@ export default function Login() {
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      await login(username, password);
-      navigate("/dashboard");
-    } catch {
-      setError("Credenciales inválidas");
-    } finally {
-      setLoading(false);
-    }
+    e.preventDefault(); setError(""); setLoading(true);
+    try { await login(username, password); navigate("/dashboard"); }
+    catch { setError("Credenciales inválidas"); setLoading(false); }
   };
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(135deg, #1a1d23 0%, #2d2f36 100%)",
-      }}
-    >
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          background: "#fff",
-          padding: "40px",
-          borderRadius: 12,
-          boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-          width: 380,
-        }}
-      >
-        <h1 style={{ textAlign: "center", marginBottom: 8, color: "#1a1d23" }}>minisap</h1>
-        <p style={{ textAlign: "center", color: "#6b7280", marginBottom: 24, fontSize: 14 }}>
-          Iniciar sesión
-        </p>
+    <div style={{
+      minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
+      background: "linear-gradient(135deg, var(--sidebar) 0%, #1E293B 50%, #312E81 100%)",
+      padding: 20,
+    }}>
+      <div style={{
+        width: "100%", maxWidth: 400, animation: "fadeIn 0.3s ease",
+      }}>
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: "var(--primary)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 16 }}>M</div>
+          <h1 style={{ color: "#F1F5F9", fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: "-0.5px" }}>minisap</h1>
+          <p style={{ color: "#64748B", fontSize: 14, marginTop: 6 }}>ERP — Sistema de Gestión</p>
+        </div>
 
-        {error && (
-          <div
-            style={{
-              background: "#fef2f2",
-              color: "#dc2626",
-              padding: "10px 14px",
-              borderRadius: 6,
-              marginBottom: 16,
-              fontSize: 13,
-            }}
-          >
-            {error}
+        <form onSubmit={handleSubmit} style={{
+          background: "var(--surface)", padding: "32px", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-lg)",
+        }}>
+          {error && (
+            <div style={{
+              background: "var(--danger-bg)", color: "var(--danger-text)", padding: "10px 14px",
+              borderRadius: "var(--radius-sm)", marginBottom: 20, fontSize: 13, fontWeight: 500,
+              display: "flex", alignItems: "center", gap: 8, animation: "fadeIn 0.2s ease",
+            }}>
+              <span>✕</span> {error}
+            </div>
+          )}
+
+          <div style={{ marginBottom: 18 }}>
+            <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Usuario</label>
+            <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required autoFocus
+              style={{ width: "100%", padding: "11px 14px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, boxSizing: "border-box", transition: "var(--transition)", background: "var(--bg)" }}
+              placeholder="admin" />
           </div>
-        )}
 
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: "block", marginBottom: 6, fontSize: 13, color: "#374151" }}>
-            Usuario
-          </label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            autoFocus
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              border: "1px solid #d1d5db",
-              borderRadius: 6,
-              fontSize: 14,
-              boxSizing: "border-box",
-            }}
-          />
-        </div>
+          <div style={{ marginBottom: 24 }}>
+            <label style={{ display: "block", marginBottom: 6, fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Contraseña</label>
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
+              style={{ width: "100%", padding: "11px 14px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, boxSizing: "border-box", transition: "var(--transition)", background: "var(--bg)" }}
+              placeholder="••••••••" />
+          </div>
 
-        <div style={{ marginBottom: 20 }}>
-          <label style={{ display: "block", marginBottom: 6, fontSize: 13, color: "#374151" }}>
-            Contraseña
-          </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              border: "1px solid #d1d5db",
-              borderRadius: 6,
-              fontSize: 14,
-              boxSizing: "border-box",
-            }}
-          />
-        </div>
-
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            width: "100%",
-            padding: "12px",
-            background: loading ? "#818cf8" : "#6366f1",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            fontSize: 15,
-            fontWeight: 600,
-            cursor: loading ? "default" : "pointer",
-          }}
-        >
-          {loading ? "Ingresando..." : "Ingresar"}
-        </button>
-      </form>
+          <button type="submit" disabled={loading} style={{
+            width: "100%", padding: "12px", background: loading ? "var(--primary-hover)" : "var(--primary)",
+            color: "#fff", border: "none", borderRadius: "var(--radius-sm)", fontSize: 15, fontWeight: 600,
+            cursor: loading ? "default" : "pointer", transition: "var(--transition)", opacity: loading ? 0.8 : 1,
+          }}>
+            {loading ? "Ingresando..." : "Iniciar sesión"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

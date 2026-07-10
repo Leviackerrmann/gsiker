@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../lib/api";
 import Modal from "../../components/Modal";
+import Badge from "../../components/Badge";
 import SearchableSelect from "../../components/SearchableSelect";
 
 interface ItemSol { id: number; sku_id: number; sku_codigo: string; sku_descripcion: string; cantidad: number; justificacion: string | null; }
@@ -115,7 +116,7 @@ export default function SolicitudesPage() {
                 <td style={td}>{new Date(s.fecha).toLocaleDateString()}</td>
                 <td style={td}>{s.usuario_nombre || "-"}</td>
                 <td style={td}>{s.items.length} ({s.items.reduce((a, i) => a + i.cantidad, 0).toLocaleString()} u)</td>
-                <td style={td}><span style={{ fontWeight: 600, fontSize: 12, color: s.estado === "aprobada" ? "#16a34a" : s.estado === "rechazada" ? "#dc2626" : s.estado === "convertida" ? "#3b82f6" : "#f59e0b" }}>{s.estado.toUpperCase()}</span></td>
+                <td style={td}><Badge color={s.estado === "aprobada" ? "success" : s.estado === "rechazada" ? "danger" : s.estado === "convertida" ? "info" : "warning"}>{s.estado.toUpperCase()}</Badge></td>
                 <td style={td}>
                   {s.estado === "pendiente" && (<>
                     <button onClick={() => askApprove(s.id)} style={{ ...btnSm, color: "#16a34a", marginRight: 4 }}>Aprobar</button>

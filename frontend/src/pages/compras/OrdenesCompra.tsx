@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import api from "../../lib/api";
 import Modal from "../../components/Modal";
 import SearchableSelect from "../../components/SearchableSelect";
+import Badge from "../../components/Badge";
 
 interface Proveedor { id: number; codigo: string; nombre: string; activo: boolean; }
 interface SKUItem { id: number; codigo_sku: string; descripcion: string; costo_unitario: number; }
@@ -246,7 +247,7 @@ export default function OrdenesCompraPage() {
                 <td style={{ ...td, fontWeight: 600, color: "#6366f1" }}>{o.numero_oc}</td>
                 <td style={td}>{o.proveedor_nombre}</td>
                 <td style={td}>{new Date(o.fecha_emision).toLocaleDateString()}</td>
-                <td style={td}><span style={{ color: estadoColors[o.estado], fontWeight: 600, fontSize: 12 }}>{o.estado.toUpperCase()}</span></td>
+                <td style={td}><Badge color={o.estado === "pendiente" ? "warning" : o.estado === "parcial" ? "info" : o.estado === "completa" ? "success" : "danger"}>{o.estado.toUpperCase()}</Badge></td>
                 <td style={td}>{o.items.length}</td>
                 <td style={td}>
                   <button onClick={() => setDetail(o)} style={{ ...btnSm, marginRight: 4 }}>Ver</button>
