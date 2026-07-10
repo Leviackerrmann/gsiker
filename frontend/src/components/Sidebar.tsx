@@ -1,44 +1,53 @@
 import { useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import {
+  LayoutDashboard, Package, Warehouse, ClipboardList, ArrowRightLeft,
+  PenLine, BookOpen, AlertTriangle, Lock, Tag, MapPin, BarChart3,
+  ShoppingCart, Building2, FileText, Receipt, Users, Settings, LogOut,
+  ChevronDown,
+} from "lucide-react";
 
-interface NavItem { to: string; label: string; icon: string; }
-interface Section { label: string; icon: string; items: NavItem[]; }
+interface NavItem { to: string; label: string; icon: React.ReactNode; }
+interface Section { label: string; icon: React.ReactNode; items: NavItem[]; }
+
+const iconSize = 17;
+const iconProps = { size: iconSize, strokeWidth: 1.8 };
 
 const sections: Section[] = [
-  { label: "Inventario", icon: "📦", items: [
-    { to: "/inventario/bodegas", label: "Bodegas", icon: "🏭" },
-    { to: "/inventario/stock", label: "Stock", icon: "📋" },
-    { to: "/inventario/movimientos", label: "Movimientos", icon: "🔄" },
-    { to: "/inventario/transferencias", label: "Transferencias", icon: "🔁" },
-    { to: "/inventario/conteos", label: "Conteos", icon: "📝" },
-    { to: "/inventario/kardex", label: "Kardex", icon: "📒" },
-    { to: "/inventario/alertas", label: "Alertas", icon: "⚠️" },
-    { to: "/inventario/reservas", label: "Reservas", icon: "🔒" },
-    { to: "/inventario/lotes", label: "Lotes", icon: "🏷️" },
-    { to: "/inventario/ubicaciones", label: "Ubicaciones", icon: "📍" },
-    { to: "/inventario/reportes", label: "Reportes", icon: "📊" },
+  { label: "Inventario", icon: <Package {...iconProps} />, items: [
+    { to: "/inventario/bodegas", label: "Bodegas", icon: <Warehouse {...iconProps} /> },
+    { to: "/inventario/stock", label: "Stock", icon: <ClipboardList {...iconProps} /> },
+    { to: "/inventario/movimientos", label: "Movimientos", icon: <ArrowRightLeft {...iconProps} /> },
+    { to: "/inventario/transferencias", label: "Transferencias", icon: <ArrowRightLeft {...iconProps} style={{ transform: "rotate(90deg)" }} /> },
+    { to: "/inventario/conteos", label: "Conteos", icon: <PenLine {...iconProps} /> },
+    { to: "/inventario/kardex", label: "Kardex", icon: <BookOpen {...iconProps} /> },
+    { to: "/inventario/alertas", label: "Alertas", icon: <AlertTriangle {...iconProps} /> },
+    { to: "/inventario/reservas", label: "Reservas", icon: <Lock {...iconProps} /> },
+    { to: "/inventario/lotes", label: "Lotes", icon: <Tag {...iconProps} /> },
+    { to: "/inventario/ubicaciones", label: "Ubicaciones", icon: <MapPin {...iconProps} /> },
+    { to: "/inventario/reportes", label: "Reportes", icon: <BarChart3 {...iconProps} /> },
   ]},
-  { label: "Compras", icon: "🛒", items: [
-    { to: "/compras/proveedores", label: "Proveedores", icon: "🏢" },
-    { to: "/compras/solicitudes", label: "Solicitudes", icon: "📝" },
-    { to: "/compras/ordenes", label: "Órdenes de Compra", icon: "📄" },
-    { to: "/compras/cotizaciones", label: "Cotizaciones", icon: "📊" },
+  { label: "Compras", icon: <ShoppingCart {...iconProps} />, items: [
+    { to: "/compras/proveedores", label: "Proveedores", icon: <Building2 {...iconProps} /> },
+    { to: "/compras/solicitudes", label: "Solicitudes", icon: <PenLine {...iconProps} /> },
+    { to: "/compras/ordenes", label: "Órdenes de Compra", icon: <FileText {...iconProps} /> },
+    { to: "/compras/cotizaciones", label: "Cotizaciones", icon: <BarChart3 {...iconProps} /> },
   ]},
-  { label: "Ventas", icon: "💰", items: [
-    { to: "/ventas/clientes", label: "Clientes", icon: "👥" },
-    { to: "/ventas/cotizaciones", label: "Cotizaciones", icon: "📊" },
-    { to: "/ventas/pedidos", label: "Pedidos", icon: "📄" },
-    { to: "/ventas/facturas", label: "Facturas", icon: "🧾" },
+  { label: "Ventas", icon: <Receipt {...iconProps} />, items: [
+    { to: "/ventas/clientes", label: "Clientes", icon: <Users {...iconProps} /> },
+    { to: "/ventas/cotizaciones", label: "Cotizaciones", icon: <BarChart3 {...iconProps} /> },
+    { to: "/ventas/pedidos", label: "Pedidos", icon: <FileText {...iconProps} /> },
+    { to: "/ventas/facturas", label: "Facturas", icon: <Receipt {...iconProps} /> },
   ]},
-  { label: "Administración", icon: "⚙️", items: [
-    { to: "/admin/usuarios", label: "Usuarios", icon: "👥" },
+  { label: "Administración", icon: <Settings {...iconProps} />, items: [
+    { to: "/admin/usuarios", label: "Usuarios", icon: <Users {...iconProps} /> },
   ]},
 ];
 
 const singleItems: NavItem[] = [
-  { to: "/dashboard", label: "Dashboard", icon: "📊" },
-  { to: "/catalogo/skus", label: "Catálogo SKU", icon: "🏷️" },
+  { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard {...iconProps} /> },
+  { to: "/catalogo/skus", label: "Catálogo SKU", icon: <Tag {...iconProps} /> },
 ];
 
 export default function Sidebar() {
@@ -79,7 +88,7 @@ export default function Sidebar() {
               textDecoration: "none", fontSize: 13, fontWeight: active ? 600 : 400,
               transition: "var(--transition)",
             }}>
-              <span style={{ fontSize: 15, width: 22, textAlign: "center" }}>{item.icon}</span>
+              <span style={{ display: "flex", alignItems: "center", width: 22, justifyContent: "center", flexShrink: 0, opacity: active ? 1 : 0.7 }}>{item.icon}</span>
               {item.label}
             </NavLink>
           );
@@ -100,11 +109,9 @@ export default function Sidebar() {
                 textAlign: "left", fontFamily: "inherit", borderRadius: "var(--radius-sm)",
                 transition: "var(--transition)", marginBottom: 2,
               }}>
-                <span style={{ fontSize: 15, width: 22, textAlign: "center" }}>{section.icon}</span>
+                <span style={{ display: "flex", alignItems: "center", width: 22, justifyContent: "center", flexShrink: 0, opacity: hasActiveChild ? 1 : 0.7 }}>{section.icon}</span>
                 <span style={{ flex: 1 }}>{section.label}</span>
-                <span style={{ fontSize: 9, opacity: 0.5, transition: "transform 0.2s", transform: isExpanded ? "rotate(0deg)" : "rotate(-90deg)" }}>
-                  ▼
-                </span>
+                <ChevronDown size={12} strokeWidth={2} style={{ opacity: 0.4, transition: "transform 0.2s", transform: isExpanded ? "rotate(0deg)" : "rotate(-90deg)" }} />
               </button>
 
               {isExpanded && (
@@ -119,7 +126,7 @@ export default function Sidebar() {
                         textDecoration: "none", fontSize: 13, fontWeight: active ? 600 : 400,
                         transition: "var(--transition)", marginBottom: 1,
                       }}>
-                        <span style={{ fontSize: 13, width: 18, textAlign: "center" }}>{item.icon}</span>
+                        <span style={{ display: "flex", alignItems: "center", width: 22, justifyContent: "center", flexShrink: 0, opacity: active ? 1 : 0.7 }}>{item.icon}</span>
                         {item.label}
                       </NavLink>
                     );
@@ -140,8 +147,8 @@ export default function Sidebar() {
             <div style={{ fontSize: 12, fontWeight: 600, color: "#E2E8F0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.nombre_completo}</div>
             <div style={{ fontSize: 10, color: "#64748B", textTransform: "capitalize" }}>{user?.rol}</div>
           </div>
-          <button onClick={() => { logout(); navigate("/login"); }} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 16, padding: 4, borderRadius: 4, lineHeight: 1 }} title="Cerrar sesión">
-            ⏻
+          <button onClick={() => { logout(); navigate("/login"); }} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 13, padding: 4, borderRadius: 4, lineHeight: 1, display: "flex", alignItems: "center" }} title="Cerrar sesión">
+            <LogOut size={15} strokeWidth={1.8} />
           </button>
         </div>
       </div>

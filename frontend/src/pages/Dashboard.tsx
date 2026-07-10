@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
+import { PackageSearch, DollarSign, AlertTriangle, FileText, ArrowRightLeft, Plus } from "lucide-react";
 
 interface DashboardData {
   sku_count: number;
@@ -25,11 +26,11 @@ export default function Dashboard() {
   );
 
   const cards = [
-    { label: "SKUs activos", value: data.sku_count, icon: "🏷️", color: "var(--primary)", bg: "var(--primary-light)" },
-    { label: "Valor inventario", value: `$${(data.valor_stock || 0).toLocaleString()}`, icon: "💰", color: "var(--success)", bg: "var(--success-bg)" },
-    { label: "Alertas stock", value: data.alertas_count, icon: "⚠️", color: data.alertas_count > 0 ? "var(--danger)" : "var(--text-secondary)", bg: data.alertas_count > 0 ? "var(--danger-bg)" : "#F1F5F9" },
-    { label: "OC pendientes", value: data.oc_pendientes_count, icon: "📄", color: data.oc_pendientes_count > 0 ? "var(--warning)" : "var(--text-secondary)", bg: data.oc_pendientes_count > 0 ? "var(--warning-bg)" : "#F1F5F9" },
-    { label: "Movimientos hoy", value: data.movs_hoy_count, icon: "🔄", color: "var(--info)", bg: "var(--info-bg)" },
+    { label: "SKUs activos", value: data.sku_count, Icon: PackageSearch, color: "var(--primary)", bg: "var(--primary-light)" },
+    { label: "Valor inventario", value: `$${(data.valor_stock || 0).toLocaleString()}`, Icon: DollarSign, color: "var(--success)", bg: "var(--success-bg)" },
+    { label: "Alertas stock", value: data.alertas_count, Icon: AlertTriangle, color: data.alertas_count > 0 ? "var(--danger)" : "var(--text-secondary)", bg: data.alertas_count > 0 ? "var(--danger-bg)" : "#F1F5F9" },
+    { label: "OC pendientes", value: data.oc_pendientes_count, Icon: FileText, color: data.oc_pendientes_count > 0 ? "var(--warning)" : "var(--text-secondary)", bg: data.oc_pendientes_count > 0 ? "var(--warning-bg)" : "#F1F5F9" },
+    { label: "Movimientos hoy", value: data.movs_hoy_count, Icon: ArrowRightLeft, color: "var(--info)", bg: "var(--info-bg)" },
   ];
 
   const maxStock = Math.max(...data.stock_por_bodega.map(b => b.total), 1);
@@ -42,15 +43,17 @@ export default function Dashboard() {
       </div>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
-        <button onClick={() => navigate("/compras/ordenes")} style={quickBtn}>+ Nueva OC</button>
-        <button onClick={() => navigate("/ventas/pedidos")} style={quickBtn}>+ Nuevo Pedido</button>
-        <button onClick={() => navigate("/catalogo/skus")} style={quickBtn}>+ Nuevo SKU</button>
+        <button onClick={() => navigate("/compras/ordenes")} style={quickBtn}><Plus size={14} /> Nueva OC</button>
+        <button onClick={() => navigate("/ventas/pedidos")} style={quickBtn}><Plus size={14} /> Nuevo Pedido</button>
+        <button onClick={() => navigate("/catalogo/skus")} style={quickBtn}><Plus size={14} /> Nuevo SKU</button>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 28 }}>
         {cards.map((c) => (
           <div key={c.label} style={{ background: "var(--surface)", padding: "20px", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-sm)", display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: c.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, flexShrink: 0 }}>{c.icon}</div>
+            <div style={{ width: 44, height: 44, borderRadius: 12, background: c.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <c.Icon size={20} strokeWidth={1.8} color={c.color} />
+            </div>
             <div>
               <div style={{ fontSize: 22, fontWeight: 700, color: c.color, lineHeight: 1.1 }}>{c.value}</div>
               <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{c.label}</div>
@@ -112,6 +115,7 @@ const quickBtn: React.CSSProperties = {
   padding: "8px 16px", background: "var(--surface)", color: "var(--text)",
   border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", cursor: "pointer",
   fontSize: 13, fontWeight: 600, transition: "var(--transition)",
+  display: "flex", alignItems: "center", gap: 6,
 };
 
 const th: React.CSSProperties = { padding: "8px 12px", textAlign: "left", fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600 };
