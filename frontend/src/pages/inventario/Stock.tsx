@@ -59,10 +59,10 @@ export default function StockPage() {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a1d23" }}>Stock</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>Stock</h2>
         <div style={{ display: "flex", gap: 10 }}>
-          <input placeholder="Buscar SKU..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, width: 220 }} />
-          <select value={bodegaFilter} onChange={(e) => setBodegaFilter(e.target.value)} style={{ padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14 }}>
+          <input placeholder="Buscar SKU..." value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, width: 220 }} />
+          <select value={bodegaFilter} onChange={(e) => setBodegaFilter(e.target.value)} style={{ padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14 }}>
             <option value="">Todas las bodegas</option>
             {bodegas.map((b) => <option key={b.id} value={b.id}>{b.nombre}</option>)}
           </select>
@@ -87,13 +87,13 @@ export default function StockPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={10} style={{ ...td, textAlign: "center", color: "#9ca3af" }}>Cargando...</td></tr>
+              <tr><td colSpan={10} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Cargando...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={10} style={{ ...td, textAlign: "center", color: "#9ca3af" }}>No hay stock</td></tr>
+              <tr><td colSpan={10} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>No hay stock</td></tr>
             ) : (
               filtered.map((s) => (
                 <tr key={s.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ ...td, fontWeight: 600, color: "#6366f1" }}>{s.sku_codigo}</td>
+                  <td style={{ ...td, fontWeight: 600, color: "var(--primary)" }}>{s.sku_codigo}</td>
                   <td style={td}>{s.sku_descripcion}</td>
                   <td style={td}>{s.lote_numero || "-"}</td>
                   <td style={td}>{s.bodega_nombre}</td>
@@ -103,7 +103,7 @@ export default function StockPage() {
                     </span>
                   </td>
                   <td style={{ ...td, textAlign: "right" }}>
-                    {s.cantidad_reservada > 0 ? <span style={{ color: "#f59e0b", fontWeight: 600 }}>{s.cantidad_reservada.toLocaleString()}</span> : "-"}
+                    {s.cantidad_reservada > 0 ? <span style={{ color: "var(--warning)", fontWeight: 600 }}>{s.cantidad_reservada.toLocaleString()}</span> : "-"}
                   </td>
                   <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>
                     <span style={{ color: s.cantidad_disponible <= 0 ? "#dc2626" : s.cantidad_disponible < s.cantidad ? "#f59e0b" : "#16a34a" }}>
@@ -125,7 +125,7 @@ export default function StockPage() {
       <Modal isOpen={!!minmaxModal} title="Configurar Límites" onClose={() => setMinmaxModal(null)}>
         {minmaxModal && (
           <div>
-            <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 12 }}>
               {minmaxModal.item.sku_codigo} - {minmaxModal.item.bodega_nombre} (Stock: {minmaxModal.item.cantidad.toLocaleString()})
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
@@ -149,11 +149,11 @@ export default function StockPage() {
   );
 }
 
-const card: React.CSSProperties = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.08)", overflowX: "auto" };
-const btnPri: React.CSSProperties = { padding: "8px 16px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSec: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "#374151", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSm: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", fontSize: 11 };
-const inp: React.CSSProperties = { width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, boxSizing: "border-box" };
-const lbl: React.CSSProperties = { display: "block", marginBottom: 4, fontSize: 13, color: "#374151" };
-const th: React.CSSProperties = { padding: "8px 8px", textAlign: "left", fontSize: 11, color: "#6b7280", textTransform: "uppercase", fontWeight: 600, whiteSpace: "nowrap" };
+const card: React.CSSProperties = { background: "var(--surface)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow)", overflowX: "auto" };
+const btnPri: React.CSSProperties = { padding: "8px 16px", background: "var(--primary)", color: "#fff", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSec: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "var(--text)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSm: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontSize: 11 };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, boxSizing: "border-box" };
+const lbl: React.CSSProperties = { display: "block", marginBottom: 4, fontSize: 13, color: "var(--text)" };
+const th: React.CSSProperties = { padding: "8px 8px", textAlign: "left", fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600, whiteSpace: "nowrap" };
 const td: React.CSSProperties = { padding: "8px", fontSize: 13, whiteSpace: "nowrap" };

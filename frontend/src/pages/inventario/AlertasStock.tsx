@@ -25,16 +25,16 @@ export default function AlertasStockPage() {
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a1d23", marginBottom: 20 }}>Alertas de Stock</h2>
+      <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 20 }}>Alertas de Stock</h2>
 
       <div style={card}>
         {loading ? (
-          <p style={{ color: "#6b7280", textAlign: "center" }}>Cargando...</p>
+          <p style={{ color: "var(--text-secondary)", textAlign: "center" }}>Cargando...</p>
         ) : alertas.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 40, color: "#16a34a" }}>
+          <div style={{ textAlign: "center", padding: 40, color: "var(--success)" }}>
             <div style={{ fontSize: 40, marginBottom: 8 }}>✅</div>
             <p style={{ fontSize: 15, fontWeight: 600 }}>No hay alertas</p>
-            <p style={{ fontSize: 13, color: "#6b7280" }}>Todo el stock está dentro de los límites configurados</p>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>Todo el stock está dentro de los límites configurados</p>
           </div>
         ) : (
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -52,7 +52,7 @@ export default function AlertasStockPage() {
             <tbody>
               {alertas.map((a) => (
                 <tr key={a.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ ...td, fontWeight: 600, color: "#6366f1" }}>{a.sku_codigo}</td>
+                  <td style={{ ...td, fontWeight: 600, color: "var(--primary)" }}>{a.sku_codigo}</td>
                   <td style={td}>{a.sku_descripcion}</td>
                   <td style={td}>{a.bodega_nombre}</td>
                   <td style={{ ...td, textAlign: "right", fontWeight: 600, color: a.tipo_alerta === "bajo_minimo" ? "#dc2626" : "#f59e0b" }}>{a.cantidad.toLocaleString()}</td>
@@ -80,6 +80,6 @@ export default function AlertasStockPage() {
   );
 }
 
-const card: React.CSSProperties = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" };
-const th: React.CSSProperties = { padding: "10px 12px", textAlign: "left", fontSize: 12, color: "#6b7280", textTransform: "uppercase", fontWeight: 600 };
+const card: React.CSSProperties = { background: "var(--surface)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow)" };
+const th: React.CSSProperties = { padding: "10px 12px", textAlign: "left", fontSize: 12, color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600 };
 const td: React.CSSProperties = { padding: "10px 12px", fontSize: 14 };

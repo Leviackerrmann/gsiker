@@ -4,6 +4,7 @@ import Modal from "../../components/Modal";
 import SearchableSelect from "../../components/SearchableSelect";
 import Badge from "../../components/Badge";
 interface ItemPV { id: number; sku_id: number; sku_codigo: string; sku_descripcion: string; cantidad_solicitada: number; cantidad_despachada: number; precio_unitario: number; precio_total: number; }
+import { useToast } from "../../components/Toast";
 interface Pedido { id: number; numero: string; cliente_id: number; cliente_nombre: string; fecha_emision: string; fecha_entrega: string | null; estado: string; subtotal: number; impuesto_total: number; total: number; nota: string | null; items: ItemPV[]; }
 export default function PedidosVentaPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -17,7 +18,7 @@ export default function PedidosVentaPage() {
   const [stockInfo, setStockInfo] = useState<Record<number, string>>({});
   const [devolving, setDevolving] = useState<Pedido | null>(null); const [bodegaDev, setBodegaDev] = useState("");
   const [devItems, setDevItems] = useState<Record<number, string>>({});
-  const [msg, setMsg] = useState("");
+  const toast = useToast();
   const load = async () => { const params = estadoFilter ? `?estado=${estadoFilter}` : ""; const { data } = await api.get(`/ventas/pedidos${params}`); setPedidos(data); setLoading(false); };
   useEffect(() => { Promise.all([api.get("/ventas/clientes"), api.get("/skus?limit=500"), api.get("/inventario/bodegas")]).then(([cR, sR, bR]) => { setClientes(cR.data.filter((c: any) => c.activo)); setSkus(sR.data); setBodegas(bR.data); }); load(); }, []);
   useEffect(() => { setLoading(true); load(); }, [estadoFilter]);
@@ -49,20 +50,19 @@ export default function PedidosVentaPage() {
   const handleDespachar = async () => { setError("");
     try { const items = Object.entries(despItems).filter(([, v]) => Number(v) > 0).map(([k, v]) => ({ item_pedido_id: Number(k), cantidad_despachada: Number(v) }));
     if (items.length === 0) { setError("Debe despachar al menos un ítem"); return; }
-    await api.post(`/ventas/pedidos/${receiving!.id}/despachar`, { bodega_id: Number(bodegaRec), items }); setMsg("Despacho registrado y stock actualizado"); load(); setTimeout(() => { setReceiving(null); setMsg(""); }, 2000); } catch (err: any) { setError(err.response?.data?.detail || "Error"); } };
+    await api.post(`/ventas/pedidos/${receiving!.id}/despachar`, { bodega_id: Number(bodegaRec), items }); toast.success("Despacho registrado y stock actualizado"); load(); setTimeout(() => { setReceiving(null); }, 2000); } catch (err: any) { setError(err.response?.data?.detail || "Error"); } };
   const openDevolucion = (p: Pedido) => { setDevolving(p); setBodegaDev(bodegas[0]?.id?.toString() || ""); const items: Record<number, string> = {}; p.items.forEach(i => { if (i.cantidad_despachada > 0) items[i.id] = ""; }); setDevItems(items); setError(""); };
   const handleDevolver = async () => { setError("");
     try { const items = Object.entries(devItems).filter(([, v]) => Number(v) > 0).map(([k, v]) => ({ item_pedido_id: Number(k), cantidad_devuelta: Number(v) }));
     if (items.length === 0) { setError("Debe devolver al menos un ítem"); return; }
     await api.post(`/ventas/pedidos/${devolving!.id}/devolver`, { bodega_id: Number(bodegaDev), items }); setDevolving(null); load(); } catch (err: any) { setError(err.response?.data?.detail || "Error"); } };
-  const handleFacturar = async (id: number) => { const { data } = await api.post(`/ventas/pedidos/${id}/facturar`); setMsg(`Factura ${data.numero} generada`); load(); setTimeout(() => setMsg(""), 3000); };
+  const handleFacturar = async (id: number) => { const { data } = await api.post(`/ventas/pedidos/${id}/facturar`); toast.success(`Factura ${data.numero} generada`); load(); };
   const handleCancelar = async (id: number, motivo: string) => { await api.post(`/ventas/pedidos/${id}/cancelar`, { motivo }); load(); };
   const skuOpts = skus.map((s: any) => ({ value: String(s.id), label: `${s.codigo_sku} - ${s.descripcion}` }));
   const cliOpts = clientes.map((c: any) => ({ value: String(c.id), label: `${c.codigo} - ${c.nombre}` }));
-  return (<div><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}><h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a1d23" }}>Pedidos de Venta</h2><button onClick={() => setShowCreate(!showCreate)} style={btnPri}>+ Nuevo Pedido</button></div>
-    {msg && <div style={{ background: "#dcfce7", color: "#166534", padding: "10px 14px", borderRadius: 6, marginBottom: 16, fontSize: 13 }}>{msg}</div>}
+  return (<div><div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}><h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>Pedidos de Venta</h2><button onClick={() => setShowCreate(!showCreate)} style={btnPri}>+ Nuevo Pedido</button></div>
     {showCreate && (<form onSubmit={handleCreate} style={{ ...card, marginBottom: 20 }}><h3 style={{ margin: "0 0 12px", fontSize: 15 }}>Nuevo Pedido</h3>
-      {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "8px 12px", borderRadius: 6, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+      {error && <div style={{ background: "var(--danger-bg)", color: "var(--danger)", padding: "8px 12px", borderRadius: "var(--radius-sm)", marginBottom: 12, fontSize: 13 }}>{error}</div>}
       <div style={{ marginBottom: 12 }}><label style={lbl}>Cliente</label><SearchableSelect options={cliOpts} value={clienteId} onChange={setClienteId} placeholder="Seleccionar" required /></div>
       <div style={{ marginBottom: 12 }}><label style={lbl}>Nota</label><input value={nota} onChange={(e) => setNota(e.target.value)} style={inp} /></div>
       <h4 style={{ fontSize: 14, margin: "16px 0 8px" }}>Ítems</h4>
@@ -75,24 +75,24 @@ export default function PedidosVentaPage() {
       <div style={{ display: "flex", gap: 8 }}><button type="submit" style={btnPri}>Crear Pedido</button><button type="button" onClick={() => setShowCreate(false)} style={btnSec}>Cancelar</button></div></form>)}
     <div style={{ marginBottom: 16 }}><select value={estadoFilter} onChange={(e) => setEstadoFilter(e.target.value)} style={{ ...inp, width: 200 }}><option value="">Todos</option>{["pendiente","parcial","despachado","facturado","cancelado"].map(e => <option key={e} value={e}>{e}</option>)}</select></div>
     <div style={card}><table style={{ width: "100%", borderCollapse: "collapse" }}><thead><tr style={{ borderBottom: "1px solid #e5e7eb" }}><th style={th}>OV</th><th style={th}>Cliente</th><th style={th}>Fecha</th><th style={th}>Estado</th><th style={{ ...th, textAlign: "right" }}>Total</th><th style={th}>Ítems</th><th style={th}></th></tr></thead>
-    <tbody>{loading ? <tr><td colSpan={7} style={{ ...td, textAlign: "center", color: "#9ca3af" }}>Cargando...</td></tr>
-    : pedidos.map((p) => (<tr key={p.id} style={{ borderBottom: "1px solid #f3f4f6" }}><td style={{ ...td, fontWeight: 600, color: "#6366f1" }}>{p.numero}</td><td style={td}>{p.cliente_nombre}</td><td style={td}>{new Date(p.fecha_emision).toLocaleDateString()}</td>
+    <tbody>{loading ? <tr><td colSpan={7} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Cargando...</td></tr>
+    : pedidos.map((p) => (<tr key={p.id} style={{ borderBottom: "1px solid #f3f4f6" }}><td style={{ ...td, fontWeight: 600, color: "var(--primary)" }}>{p.numero}</td><td style={td}>{p.cliente_nombre}</td><td style={td}>{new Date(p.fecha_emision).toLocaleDateString()}</td>
       <td style={td}><Badge color={p.estado === "pendiente" ? "warning" : p.estado === "parcial" ? "info" : p.estado === "despachado" ? "success" : p.estado === "facturado" ? "neutral" : "danger"}>{p.estado.toUpperCase()}</Badge></td><td style={{ ...td, textAlign: "right", fontWeight: 600 }}>${p.total.toFixed(2)}</td><td style={td}>{p.items.length}</td>
       <td style={td}>{(p.estado === "pendiente" || p.estado === "parcial") && <button onClick={() => openDespacho(p)} style={{ ...btnPri, fontSize: 11, padding: "4px 8px", marginRight: 4 }}>Despachar</button>}
-        {(p.estado === "parcial" || p.estado === "despachado") && <button onClick={() => openDevolucion(p)} style={{ ...btnSm, marginRight: 4, color: "#dc2626" }}>Devolver</button>}
+        {(p.estado === "parcial" || p.estado === "despachado") && <button onClick={() => openDevolucion(p)} style={{ ...btnSm, marginRight: 4, color: "var(--danger)" }}>Devolver</button>}
         {(p.estado === "despachado") && <button onClick={() => handleFacturar(p.id)} style={{ ...btnPri, fontSize: 11, padding: "4px 8px", marginRight: 4, background: "#16a34a" }}>Facturar</button>}
-        {(p.estado !== "cancelado" && p.estado !== "facturado") && <button onClick={() => { const m = prompt("Motivo de cancelación:"); if (m) handleCancelar(p.id, m); }} style={{ ...btnSm, color: "#dc2626" }}>Cancelar</button>}</td></tr>))}</tbody></table></div>
+        {(p.estado !== "cancelado" && p.estado !== "facturado") && <button onClick={() => { const m = prompt("Motivo de cancelación:"); if (m) handleCancelar(p.id, m); }} style={{ ...btnSm, color: "var(--danger)" }}>Cancelar</button>}</td></tr>))}</tbody></table></div>
     {receiving && (<Modal isOpen={!!receiving} title={`Despacho OV ${receiving.numero}`} onClose={() => setReceiving(null)}>
-      {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "10px", borderRadius: 6, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+      {error && <div style={{ background: "var(--danger-bg)", color: "var(--danger)", padding: "10px", borderRadius: "var(--radius-sm)", marginBottom: 12, fontSize: 13 }}>{error}</div>}
       <div style={{ marginBottom: 12 }}><label style={lbl}>Bodega</label><select value={bodegaRec} onChange={(e) => { setBodegaRec(e.target.value); fetchStockInfo(receiving, e.target.value); }} style={inp}>{bodegas.map((b: any) => <option key={b.id} value={b.id}>{b.nombre}</option>)}</select></div>
-      {receiving.items.map((i) => { const pend = i.cantidad_solicitada - i.cantidad_despachada; if (pend <= 0) return null; return (<div key={i.id} style={{ marginBottom: 8 }}><div style={{ display: "flex", gap: 12, alignItems: "center" }}><span style={{ flex: 1, fontSize: 13 }}>{i.sku_codigo} ({pend.toLocaleString()} pend.)</span><input type="number" step="0.01" min="0" max={pend} value={despItems[i.id] || ""} onChange={(e) => setDespItems({ ...despItems, [i.id]: e.target.value })} style={{ ...inp, width: 120 }} /></div>{stockInfo[i.id] && <span style={{ fontSize: 11, color: "#16a34a" }}>{stockInfo[i.id]}</span>}</div>); })}
+      {receiving.items.map((i) => { const pend = i.cantidad_solicitada - i.cantidad_despachada; if (pend <= 0) return null; return (<div key={i.id} style={{ marginBottom: 8 }}><div style={{ display: "flex", gap: 12, alignItems: "center" }}><span style={{ flex: 1, fontSize: 13 }}>{i.sku_codigo} ({pend.toLocaleString()} pend.)</span><input type="number" step="0.01" min="0" max={pend} value={despItems[i.id] || ""} onChange={(e) => setDespItems({ ...despItems, [i.id]: e.target.value })} style={{ ...inp, width: 120 }} /></div>{stockInfo[i.id] && <span style={{ fontSize: 11, color: "var(--success)" }}>{stockInfo[i.id]}</span>}</div>); })}
       <div style={{ display: "flex", gap: 8, marginTop: 16, justifyContent: "flex-end" }}><button onClick={() => setReceiving(null)} style={btnSec}>Cancelar</button><button onClick={handleDespachar} style={btnPri}>Confirmar Despacho</button></div></Modal>)}
     {devolving && (<Modal isOpen={!!devolving} title={`Devolución OV ${devolving.numero}`} onClose={() => setDevolving(null)}>
-      {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "10px", borderRadius: 6, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+      {error && <div style={{ background: "var(--danger-bg)", color: "var(--danger)", padding: "10px", borderRadius: "var(--radius-sm)", marginBottom: 12, fontSize: 13 }}>{error}</div>}
       {(devolving.items.filter(i => i.cantidad_despachada > 0).length === 0) ? (
         <div style={{ textAlign: "center", padding: 20 }}>
-          <p style={{ color: "#6b7280", fontSize: 14, marginBottom: 12 }}>No hay ítems despachados en este pedido.</p>
-          <p style={{ color: "#9ca3af", fontSize: 13 }}>Primero debes despachar los ítems antes de poder devolverlos.</p>
+          <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 12 }}>No hay ítems despachados en este pedido.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Primero debes despachar los ítems antes de poder devolverlos.</p>
         </div>
       ) : (
         <>
@@ -103,11 +103,11 @@ export default function PedidosVentaPage() {
       )}
     </Modal>)}</div>);
 }
-const card: React.CSSProperties = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.08)", overflowX: "auto" };
-const btnPri: React.CSSProperties = { padding: "8px 16px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSec: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "#374151", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSm: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", fontSize: 12 };
-const inp: React.CSSProperties = { width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, boxSizing: "border-box" };
-const lbl: React.CSSProperties = { display: "block", marginBottom: 4, fontSize: 13, color: "#374151" };
-const th: React.CSSProperties = { padding: "10px 8px", textAlign: "left", fontSize: 11, color: "#6b7280", textTransform: "uppercase", fontWeight: 600, whiteSpace: "nowrap" };
+const card: React.CSSProperties = { background: "var(--surface)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow)", overflowX: "auto" };
+const btnPri: React.CSSProperties = { padding: "8px 16px", background: "var(--primary)", color: "#fff", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSec: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "var(--text)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSm: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontSize: 12 };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, boxSizing: "border-box" };
+const lbl: React.CSSProperties = { display: "block", marginBottom: 4, fontSize: 13, color: "var(--text)" };
+const th: React.CSSProperties = { padding: "10px 8px", textAlign: "left", fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600, whiteSpace: "nowrap" };
 const td: React.CSSProperties = { padding: "8px", fontSize: 13, whiteSpace: "nowrap" };

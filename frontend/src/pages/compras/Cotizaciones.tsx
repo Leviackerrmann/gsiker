@@ -52,10 +52,10 @@ export default function CotizacionesPage() {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a1d23" }}>Cotizaciones</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>Cotizaciones</h2>
         <button onClick={() => setShowCreate(!showCreate)} style={btnPri}>+ Nueva Cotización</button>
       </div>
-      {msg && <div style={{ background: "#dcfce7", color: "#166534", padding: "10px 14px", borderRadius: 6, marginBottom: 16, fontSize: 13 }}>{msg}</div>}
+      {msg && <div style={{ background: "var(--success-bg)", color: "var(--success-text)", padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: 16, fontSize: 13 }}>{msg}</div>}
 
       {showCreate && (
         <form onSubmit={handleCreate} style={{ ...card, marginBottom: 20 }}>
@@ -95,8 +95,8 @@ export default function CotizacionesPage() {
             <th style={th}>#</th><th style={th}>Fecha</th><th style={th}>Ítems</th><th style={th}>Propuestas</th><th style={th}>Estado</th><th style={th}></th>
           </tr></thead>
           <tbody>
-            {loading ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "#9ca3af" }}>Cargando...</td></tr>
-            : cotizaciones.length === 0 ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "#9ca3af" }}>Sin cotizaciones</td></tr>
+            {loading ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Cargando...</td></tr>
+            : cotizaciones.length === 0 ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Sin cotizaciones</td></tr>
             : cotizaciones.map((c) => (
               <tr key={c.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                 <td style={{ ...td, fontWeight: 600 }}>{c.numero}</td>
@@ -105,7 +105,7 @@ export default function CotizacionesPage() {
                 <td style={td}>{c.propuestas.map((p) => (
                   <div key={p.id} style={{ marginBottom: 4, background: p.adjudicada ? "#dcfce7" : "#f3f4f6", padding: "4px 8px", borderRadius: 4, fontSize: 12 }}>
                     {p.proveedor_nombre}: ${p.total.toFixed(2)} {p.adjudicada ? "✅" : (
-                      c.estado !== "adjudicada" ? <button onClick={() => handleAdjudicar(c.id, p.id)} style={{ ...btnSm, marginLeft: 8, color: "#16a34a" }}>Adjudicar</button> : null
+                      c.estado !== "adjudicada" ? <button onClick={() => handleAdjudicar(c.id, p.id)} style={{ ...btnSm, marginLeft: 8, color: "var(--success)" }}>Adjudicar</button> : null
                     )}
                   </div>
                 ))}</td>
@@ -120,13 +120,13 @@ export default function CotizacionesPage() {
   );
 }
 
-const card: React.CSSProperties = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.08)", overflowX: "auto" };
-const btnPri: React.CSSProperties = { padding: "8px 16px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSec: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "#374151", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSm: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", fontSize: 12 };
-const inp: React.CSSProperties = { width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, boxSizing: "border-box" };
-const lbl: React.CSSProperties = { display: "block", marginBottom: 4, fontSize: 13, color: "#374151" };
-const th: React.CSSProperties = { padding: "10px 12px", textAlign: "left", fontSize: 12, color: "#6b7280", textTransform: "uppercase", fontWeight: 600 };
+const card: React.CSSProperties = { background: "var(--surface)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow)", overflowX: "auto" };
+const btnPri: React.CSSProperties = { padding: "8px 16px", background: "var(--primary)", color: "#fff", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSec: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "var(--text)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSm: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontSize: 12 };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, boxSizing: "border-box" };
+const lbl: React.CSSProperties = { display: "block", marginBottom: 4, fontSize: 13, color: "var(--text)" };
+const th: React.CSSProperties = { padding: "10px 12px", textAlign: "left", fontSize: 12, color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600 };
 const td: React.CSSProperties = { padding: "10px 12px", fontSize: 14 };
 const modalOverlay: React.CSSProperties = { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 };
-const modalCard: React.CSSProperties = { background: "#fff", padding: 30, borderRadius: 12, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", maxWidth: 600, width: "90%", maxHeight: "80vh", overflow: "auto" };
+const modalCard: React.CSSProperties = { background: "var(--surface)", padding: 30, borderRadius: 12, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", maxWidth: 600, width: "90%", maxHeight: "80vh", overflow: "auto" };

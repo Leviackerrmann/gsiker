@@ -67,15 +67,15 @@ export default function SolicitudesPage() {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a1d23" }}>Solicitudes de Compra</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>Solicitudes de Compra</h2>
         <button onClick={() => setShowForm(!showForm)} style={btnPri}>+ Nueva Solicitud</button>
       </div>
-      {msg && <div style={{ background: "#dcfce7", color: "#166534", padding: "10px 14px", borderRadius: 6, marginBottom: 16, fontSize: 13 }}>{msg}</div>}
+      {msg && <div style={{ background: "var(--success-bg)", color: "var(--success-text)", padding: "10px 14px", borderRadius: "var(--radius-sm)", marginBottom: 16, fontSize: 13 }}>{msg}</div>}
 
       {showForm && (
         <form onSubmit={handleCreate} style={{ ...card, marginBottom: 20 }}>
           <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>Nueva Solicitud</h3>
-          {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "8px 12px", borderRadius: 6, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+          {error && <div style={{ background: "var(--danger-bg)", color: "var(--danger)", padding: "8px 12px", borderRadius: "var(--radius-sm)", marginBottom: 12, fontSize: 13 }}>{error}</div>}
           {lineItems.map((li, idx) => (
             <div key={idx} style={{ marginBottom: 8 }}>
               <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 2fr 40px", gap: 8, marginBottom: 4 }}>
@@ -84,7 +84,7 @@ export default function SolicitudesPage() {
                 <input placeholder="Justificación" value={li.justificacion} onChange={(e) => { const c = [...lineItems]; c[idx].justificacion = e.target.value; setLineItems(c); }} style={inp} />
                 <button type="button" onClick={() => { if (lineItems.length > 1) setLineItems(lineItems.filter((_, i) => i !== idx)); }} style={{ ...btnSec, padding: "4px 8px", fontSize: 14 }}>×</button>
               </div>
-              {li.stock && <span style={{ fontSize: 12, color: "#16a34a", paddingLeft: 4 }}>{li.stock}</span>}
+              {li.stock && <span style={{ fontSize: 12, color: "var(--success)", paddingLeft: 4 }}>{li.stock}</span>}
             </div>
           ))}
           <button type="button" onClick={() => setLineItems([...lineItems, { sku_id: "", cantidad: "", justificacion: "", stock: "" }])} style={{ ...btnSec, marginBottom: 12 }}>+ Agregar ítem</button>
@@ -96,7 +96,7 @@ export default function SolicitudesPage() {
       )}
 
       <div style={{ marginBottom: 16 }}>
-        <select value={estadoFilter} onChange={(e) => setEstadoFilter(e.target.value)} style={{ padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, width: 200 }}>
+        <select value={estadoFilter} onChange={(e) => setEstadoFilter(e.target.value)} style={{ padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, width: 200 }}>
           <option value="">Todos</option>
           {["pendiente","aprobada","rechazada","convertida"].map((e) => <option key={e} value={e}>{e}</option>)}
         </select>
@@ -108,8 +108,8 @@ export default function SolicitudesPage() {
             <th style={th}>#</th><th style={th}>Fecha</th><th style={th}>Solicitante</th><th style={th}>Ítems</th><th style={th}>Estado</th><th style={th}></th>
           </tr></thead>
           <tbody>
-            {loading ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "#9ca3af" }}>Cargando...</td></tr>
-            : solicitudes.length === 0 ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "#9ca3af" }}>Sin solicitudes</td></tr>
+            {loading ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Cargando...</td></tr>
+            : solicitudes.length === 0 ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Sin solicitudes</td></tr>
             : solicitudes.map((s) => (
               <tr key={s.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                 <td style={{ ...td, fontWeight: 600 }}>{s.numero}</td>
@@ -119,8 +119,8 @@ export default function SolicitudesPage() {
                 <td style={td}><Badge color={s.estado === "aprobada" ? "success" : s.estado === "rechazada" ? "danger" : s.estado === "convertida" ? "info" : "warning"}>{s.estado.toUpperCase()}</Badge></td>
                 <td style={td}>
                   {s.estado === "pendiente" && (<>
-                    <button onClick={() => askApprove(s.id)} style={{ ...btnSm, color: "#16a34a", marginRight: 4 }}>Aprobar</button>
-                    <button onClick={() => askReject(s.id)} style={{ ...btnSm, color: "#dc2626" }}>Rechazar</button>
+                    <button onClick={() => askApprove(s.id)} style={{ ...btnSm, color: "var(--success)", marginRight: 4 }}>Aprobar</button>
+                    <button onClick={() => askReject(s.id)} style={{ ...btnSm, color: "var(--danger)" }}>Rechazar</button>
                   </>)}
                   {s.estado === "aprobada" && <button onClick={() => askConvert(s.id)} style={btnPri}>Convertir en OC</button>}
                 </td>
@@ -131,7 +131,7 @@ export default function SolicitudesPage() {
       </div>
 
       <Modal isOpen={!!confirmModal} title={confirmModal?.title || ""} onClose={() => setConfirmModal(null)}>
-        <p style={{ color: "#374151", marginBottom: 20, fontSize: 14 }}>{confirmModal?.msg}</p>
+        <p style={{ color: "var(--text)", marginBottom: 20, fontSize: 14 }}>{confirmModal?.msg}</p>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button onClick={() => setConfirmModal(null)} style={btnSec}>Cancelar</button>
           <button onClick={() => confirmModal?.action()} style={btnPri}>Confirmar</button>
@@ -141,10 +141,10 @@ export default function SolicitudesPage() {
   );
 }
 
-const card: React.CSSProperties = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.08)", overflowX: "auto" };
-const btnPri: React.CSSProperties = { padding: "8px 16px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSec: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "#374151", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSm: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", fontSize: 12 };
-const inp: React.CSSProperties = { padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, boxSizing: "border-box" };
-const th: React.CSSProperties = { padding: "10px 12px", textAlign: "left", fontSize: 12, color: "#6b7280", textTransform: "uppercase", fontWeight: 600 };
+const card: React.CSSProperties = { background: "var(--surface)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow)", overflowX: "auto" };
+const btnPri: React.CSSProperties = { padding: "8px 16px", background: "var(--primary)", color: "#fff", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSec: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "var(--text)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSm: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontSize: 12 };
+const inp: React.CSSProperties = { padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, boxSizing: "border-box" };
+const th: React.CSSProperties = { padding: "10px 12px", textAlign: "left", fontSize: 12, color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600 };
 const td: React.CSSProperties = { padding: "10px 12px", fontSize: 14 };

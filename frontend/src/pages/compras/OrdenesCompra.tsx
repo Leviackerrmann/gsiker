@@ -4,6 +4,7 @@ import Modal from "../../components/Modal";
 import SearchableSelect from "../../components/SearchableSelect";
 import Badge from "../../components/Badge";
 
+import { useToast } from "../../components/Toast";
 interface Proveedor { id: number; codigo: string; nombre: string; activo: boolean; }
 interface SKUItem { id: number; codigo_sku: string; descripcion: string; costo_unitario: number; }
 interface ItemOC { id: number; sku_id: number; sku_codigo: string; sku_descripcion: string; cantidad_solicitada: number; cantidad_recibida: number; costo_unitario: number; costo_total: number; }
@@ -24,8 +25,8 @@ export default function OrdenesCompraPage() {
   const [detail, setDetail] = useState<Orden | null>(null);
   const [receiving, setReceiving] = useState<Orden | null>(null);
   const [devolving, setDevolving] = useState<Orden | null>(null);
-  const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
+  const toast = useToast();
   const [confirmModal, setConfirmModal] = useState<{ title: string; msg: string; action: () => void; hasInput?: boolean; inputLabel?: string; onConfirmInput?: (v: string) => void } | null>(null);
   const [motiveInput, setMotiveInput] = useState("");
 
@@ -91,17 +92,17 @@ export default function OrdenesCompraPage() {
       const pendiente = i.cantidad_solicitada - i.cantidad_recibida;
       if (pendiente > 0) items[i.id] = pendiente.toString();
     });
-    setRecItems(items); setMsg(""); setError("");
+    setRecItems(items); setError("");
   };
 
   const handleRecibir = async () => {
-    setError(""); setMsg("");
+    setError("");
     try {
       const items = Object.entries(recItems).filter(([, v]) => Number(v) > 0).map(([k, v]) => ({ item_orden_id: Number(k), cantidad_recibida: Number(v) }));
       if (items.length === 0) { setError("Debe recibir al menos un ítem"); return; }
       await api.post(`/compras/ordenes/${receiving!.id}/recibir`, { bodega_id: Number(bodegaRecepcion), items });
-      setMsg("Recepción registrada y stock actualizado"); load();
-      setTimeout(() => { setReceiving(null); setMsg(""); }, 2000);
+      toast.success("Recepción registrada y stock actualizado"); load();
+      setTimeout(() => { setReceiving(null); }, 2000);
     } catch (err: any) { setError(err.response?.data?.detail || "Error en recepción"); }
   };
 
@@ -130,16 +131,14 @@ export default function OrdenesCompraPage() {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a1d23" }}>Órdenes de Compra</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>Órdenes de Compra</h2>
         <button onClick={() => setShowCreate(!showCreate)} style={btnPri}>+ Nueva Orden</button>
       </div>
-
-      {msg && <div style={{ background: "#dcfce7", color: "#166534", padding: "10px 14px", borderRadius: 6, marginBottom: 16, fontSize: 13 }}>{msg}</div>}
 
       {showCreate && (
         <form onSubmit={handleCreate} style={{ ...card, marginBottom: 20 }}>
           <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>Nueva Orden de Compra</h3>
-          {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "8px 12px", borderRadius: 6, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+          {error && <div style={{ background: "var(--danger-bg)", color: "var(--danger)", padding: "8px 12px", borderRadius: "var(--radius-sm)", marginBottom: 12, fontSize: 13 }}>{error}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
             <div><label style={lbl}>Proveedor *</label><SearchableSelect options={provOpts} value={provId} onChange={setProvId} placeholder="Seleccionar..." required /></div>
             <div><label style={lbl}>Fecha entrega</label><input type="date" value={nuevaFechaEntrega} onChange={(e) => setNuevaFechaEntrega(e.target.value)} style={inp} /></div>
@@ -172,7 +171,7 @@ export default function OrdenesCompraPage() {
 
       {detail && (
         <Modal isOpen={!!detail} title={`OC ${detail.numero_oc}`} onClose={() => setDetail(null)} maxWidth={700}>
-          <p style={{ fontSize: 13, color: "#6b7280", marginBottom: 12 }}>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 12 }}>
             Proveedor: {detail.proveedor_nombre} | Estado: <strong style={{ color: estadoColors[detail.estado] }}>{detail.estado}</strong>
           </p>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -194,8 +193,7 @@ export default function OrdenesCompraPage() {
 
       {receiving && (
         <Modal isOpen={!!receiving} title={`Recepción OC ${receiving.numero_oc}`} onClose={() => setReceiving(null)}>
-          {msg && <div style={{ background: "#dcfce7", color: "#166534", padding: "10px", borderRadius: 6, marginBottom: 12, fontSize: 13 }}>{msg}</div>}
-          {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "10px", borderRadius: 6, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+          {error && <div style={{ background: "var(--danger-bg)", color: "var(--danger)", padding: "10px", borderRadius: "var(--radius-sm)", marginBottom: 12, fontSize: 13 }}>{error}</div>}
           <div style={{ marginBottom: 12 }}><label style={lbl}>Recibir en bodega</label><select value={bodegaRecepcion} onChange={(e) => setBodegaRecepcion(e.target.value)} style={inp}>{bodegas.map((b) => <option key={b.id} value={b.id}>{b.nombre}</option>)}</select></div>
           {receiving.items.map((i) => {
             const pendiente = i.cantidad_solicitada - i.cantidad_recibida;
@@ -216,7 +214,7 @@ export default function OrdenesCompraPage() {
 
       {devolving && (
         <Modal isOpen={!!devolving} title={`Devolución OC ${devolving.numero_oc}`} onClose={() => setDevolving(null)}>
-          {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "10px", borderRadius: 6, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+          {error && <div style={{ background: "var(--danger-bg)", color: "var(--danger)", padding: "10px", borderRadius: "var(--radius-sm)", marginBottom: 12, fontSize: 13 }}>{error}</div>}
           <div style={{ marginBottom: 12 }}><label style={lbl}>Bodega origen</label><select value={bodegaDevolucion} onChange={(e) => setBodegaDevolucion(e.target.value)} style={inp}>{bodegas.map((b) => <option key={b.id} value={b.id}>{b.nombre}</option>)}</select></div>
           {devolving.items.map((i) => {
             if (i.cantidad_recibida <= 0) return null;
@@ -240,11 +238,11 @@ export default function OrdenesCompraPage() {
             <th style={th}>OC</th><th style={th}>Proveedor</th><th style={th}>Fecha</th><th style={th}>Estado</th><th style={th}>Ítems</th><th style={th}></th>
           </tr></thead>
           <tbody>
-            {loading ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "#9ca3af" }}>Cargando...</td></tr>
-            : ordenes.length === 0 ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "#9ca3af" }}>Sin órdenes</td></tr>
+            {loading ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Cargando...</td></tr>
+            : ordenes.length === 0 ? <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Sin órdenes</td></tr>
             : ordenes.map((o) => (
               <tr key={o.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                <td style={{ ...td, fontWeight: 600, color: "#6366f1" }}>{o.numero_oc}</td>
+                <td style={{ ...td, fontWeight: 600, color: "var(--primary)" }}>{o.numero_oc}</td>
                 <td style={td}>{o.proveedor_nombre}</td>
                 <td style={td}>{new Date(o.fecha_emision).toLocaleDateString()}</td>
                 <td style={td}><Badge color={o.estado === "pendiente" ? "warning" : o.estado === "parcial" ? "info" : o.estado === "completa" ? "success" : "danger"}>{o.estado.toUpperCase()}</Badge></td>
@@ -255,10 +253,10 @@ export default function OrdenesCompraPage() {
                     <button onClick={() => openRecepcion(o)} style={{ ...btnPri, fontSize: 11, padding: "4px 8px", marginRight: 4 }}>Recibir</button>
                   )}
                   {(o.estado === "parcial" || o.estado === "completa") && (
-                    <button onClick={() => openDevolucion(o)} style={{ ...btnSm, marginRight: 4, color: "#dc2626" }}>Devolver</button>
+                    <button onClick={() => openDevolucion(o)} style={{ ...btnSm, marginRight: 4, color: "var(--danger)" }}>Devolver</button>
                   )}
                   {(o.estado === "pendiente" || o.estado === "parcial") && (
-                    <button onClick={() => askCancel(o.id)} style={{ ...btnSm, color: "#dc2626" }}>Cancelar</button>
+                    <button onClick={() => askCancel(o.id)} style={{ ...btnSm, color: "var(--danger)" }}>Cancelar</button>
                   )}
                 </td>
               </tr>
@@ -268,7 +266,7 @@ export default function OrdenesCompraPage() {
       </div>
 
       <Modal isOpen={!!confirmModal} title={confirmModal?.title || ""} onClose={() => setConfirmModal(null)}>
-        <p style={{ color: "#374151", marginBottom: 12, fontSize: 14 }}>{confirmModal?.msg}</p>
+        <p style={{ color: "var(--text)", marginBottom: 12, fontSize: 14 }}>{confirmModal?.msg}</p>
         {confirmModal?.hasInput && (
           <div style={{ marginBottom: 16 }}>
             <label style={lbl}>{confirmModal.inputLabel}</label>
@@ -284,11 +282,11 @@ export default function OrdenesCompraPage() {
   );
 }
 
-const card: React.CSSProperties = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.08)", overflowX: "auto" };
-const btnPri: React.CSSProperties = { padding: "8px 16px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSec: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "#374151", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSm: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", fontSize: 12 };
-const inp: React.CSSProperties = { width: "100%", padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, boxSizing: "border-box" };
-const lbl: React.CSSProperties = { display: "block", marginBottom: 4, fontSize: 13, color: "#374151" };
-const th: React.CSSProperties = { padding: "10px 8px", textAlign: "left", fontSize: 11, color: "#6b7280", textTransform: "uppercase", fontWeight: 600, whiteSpace: "nowrap" };
+const card: React.CSSProperties = { background: "var(--surface)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow)", overflowX: "auto" };
+const btnPri: React.CSSProperties = { padding: "8px 16px", background: "var(--primary)", color: "#fff", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSec: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "var(--text)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSm: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontSize: 12 };
+const inp: React.CSSProperties = { width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, boxSizing: "border-box" };
+const lbl: React.CSSProperties = { display: "block", marginBottom: 4, fontSize: 13, color: "var(--text)" };
+const th: React.CSSProperties = { padding: "10px 8px", textAlign: "left", fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600, whiteSpace: "nowrap" };
 const td: React.CSSProperties = { padding: "8px", fontSize: 13, whiteSpace: "nowrap" };

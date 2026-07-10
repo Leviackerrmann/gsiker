@@ -44,12 +44,12 @@ export default function BodegasPage() {
     load();
   };
 
-  if (loading) return <p style={{ color: "#6b7280" }}>Cargando...</p>;
+  if (loading) return <p style={{ color: "var(--text-secondary)" }}>Cargando...</p>;
 
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a1d23" }}>Bodegas</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>Bodegas</h2>
         <button onClick={() => { setShowForm(!showForm); setEditingId(null); setNombre(""); setUbicacion(""); }} style={btnPrimary}>
           + Nueva Bodega
         </button>
@@ -109,7 +109,7 @@ export default function BodegasPage() {
               </tr>
             ))}
             {bodegas.length === 0 && (
-              <tr><td colSpan={4} style={{ ...tdStyle, textAlign: "center", color: "#9ca3af" }}>No hay bodegas registradas</td></tr>
+              <tr><td colSpan={4} style={{ ...tdStyle, textAlign: "center", color: "var(--text-muted)" }}>No hay bodegas registradas</td></tr>
             )}
           </tbody>
         </table>
@@ -118,10 +118,10 @@ export default function BodegasPage() {
   );
 }
 
-const card: React.CSSProperties = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" };
-const btnPrimary: React.CSSProperties = { padding: "8px 16px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSecondary: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "#374151", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSmall: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", fontSize: 12 };
-const inputStyle: React.CSSProperties = { flex: 1, padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14 };
-const thStyle: React.CSSProperties = { padding: "10px 12px", textAlign: "left", fontSize: 12, color: "#6b7280", textTransform: "uppercase", fontWeight: 600 };
+const card: React.CSSProperties = { background: "var(--surface)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow)" };
+const btnPrimary: React.CSSProperties = { padding: "8px 16px", background: "var(--primary)", color: "#fff", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSecondary: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "var(--text)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSmall: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontSize: 12 };
+const inputStyle: React.CSSProperties = { flex: 1, padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14 };
+const thStyle: React.CSSProperties = { padding: "10px 12px", textAlign: "left", fontSize: 12, color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600 };
 const tdStyle: React.CSSProperties = { padding: "10px 12px", fontSize: 14 };

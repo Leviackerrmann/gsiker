@@ -47,7 +47,7 @@ export default function SearchableSelect({ options, value, onChange, placeholder
         onClick={() => { if (!disabled) setOpen(!open); }}
         style={{
           display: "flex", alignItems: "center", padding: "8px 12px",
-          border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14,
+          border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14,
           cursor: disabled ? "default" : "pointer", background: disabled ? "#f9fafb" : "#fff",
           minHeight: 38, boxSizing: "border-box",
         }}
@@ -55,13 +55,13 @@ export default function SearchableSelect({ options, value, onChange, placeholder
         <span style={{ flex: 1, color: selectedOption ? "#1a1d23" : "#9ca3af", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {selectedOption ? selectedOption.label : placeholder}
         </span>
-        <span style={{ color: "#9ca3af", fontSize: 10, marginLeft: 8 }}>{open ? "▲" : "▼"}</span>
+        <span style={{ color: "var(--text-muted)", fontSize: 10, marginLeft: 8 }}>{open ? "▲" : "▼"}</span>
       </div>
 
       {open && (
         <div style={{
           position: "absolute", top: "100%", left: 0, right: 0, zIndex: 100,
-          background: "#fff", border: "1px solid #d1d5db", borderRadius: "0 0 6px 6px",
+          background: "var(--surface)", border: "1px solid var(--border)", borderRadius: "0 0 6px 6px",
           boxShadow: "0 8px 24px rgba(0,0,0,0.12)", maxHeight: 240, overflow: "auto", marginTop: -1,
         }}>
           <div style={{ padding: "6px 8px", borderBottom: "1px solid #f3f4f6" }}>
@@ -92,11 +92,11 @@ export default function SearchableSelect({ options, value, onChange, placeholder
               onMouseLeave={(e) => { (e.target as HTMLElement).style.background = o.value === value ? "#eef2ff" : "transparent"; }}
             >
               <div>{o.label}</div>
-              {o.sublabel && <div style={{ fontSize: 11, color: "#9ca3af" }}>{o.sublabel}</div>}
+              {o.sublabel && <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{o.sublabel}</div>}
             </div>
           ))}
           {filtered.length === 0 && (
-            <div style={{ padding: 12, textAlign: "center", color: "#9ca3af", fontSize: 13 }}>
+            <div style={{ padding: 12, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
               Sin resultados
             </div>
           )}

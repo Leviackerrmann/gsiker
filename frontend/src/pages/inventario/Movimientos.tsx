@@ -77,7 +77,7 @@ export default function MovimientosPage() {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a1d23" }}>Movimientos</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>Movimientos</h2>
         <button onClick={() => setShowForm(!showForm)} style={btnPrimary}>
           + Nuevo Movimiento
         </button>
@@ -86,7 +86,7 @@ export default function MovimientosPage() {
       {showForm && (
         <form onSubmit={handleSubmit} style={{ ...card, marginBottom: 20 }}>
           <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>Registrar Movimiento</h3>
-          {error && <div style={{ background: "#fef2f2", color: "#dc2626", padding: "8px 12px", borderRadius: 6, marginBottom: 12, fontSize: 13 }}>{error}</div>}
+          {error && <div style={{ background: "var(--danger-bg)", color: "var(--danger)", padding: "8px 12px", borderRadius: "var(--radius-sm)", marginBottom: 12, fontSize: 13 }}>{error}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
             <select value={tipo} onChange={(e) => setTipo(e.target.value)} style={inputStyle} required>
               <option value="entrada">Entrada</option>
@@ -133,9 +133,9 @@ export default function MovimientosPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} style={{ ...tdStyle, textAlign: "center", color: "#9ca3af" }}>Cargando...</td></tr>
+              <tr><td colSpan={9} style={{ ...tdStyle, textAlign: "center", color: "var(--text-muted)" }}>Cargando...</td></tr>
             ) : movimientos.length === 0 ? (
-              <tr><td colSpan={9} style={{ ...tdStyle, textAlign: "center", color: "#9ca3af" }}>Sin movimientos</td></tr>
+              <tr><td colSpan={9} style={{ ...tdStyle, textAlign: "center", color: "var(--text-muted)" }}>Sin movimientos</td></tr>
             ) : (
               movimientos.map((m) => (
                 <tr key={m.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
@@ -162,9 +162,9 @@ export default function MovimientosPage() {
   );
 }
 
-const card: React.CSSProperties = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.08)", overflowX: "auto" };
-const btnPrimary: React.CSSProperties = { padding: "8px 16px", background: "#6366f1", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSecondary: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "#374151", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const inputStyle: React.CSSProperties = { padding: "8px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, boxSizing: "border-box" };
-const thStyle: React.CSSProperties = { padding: "8px 8px", textAlign: "left", fontSize: 11, color: "#6b7280", textTransform: "uppercase", fontWeight: 600, whiteSpace: "nowrap" };
+const card: React.CSSProperties = { background: "var(--surface)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow)", overflowX: "auto" };
+const btnPrimary: React.CSSProperties = { padding: "8px 16px", background: "var(--primary)", color: "#fff", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSecondary: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "var(--text)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const inputStyle: React.CSSProperties = { padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, boxSizing: "border-box" };
+const thStyle: React.CSSProperties = { padding: "8px 8px", textAlign: "left", fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600, whiteSpace: "nowrap" };
 const tdStyle: React.CSSProperties = { padding: "8px", fontSize: 13, whiteSpace: "nowrap" };

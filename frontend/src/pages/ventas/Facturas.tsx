@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import api from "../../lib/api";
 import Modal from "../../components/Modal";
+import { useToast } from "../../components/Toast";
 
 interface Factura {
   id: number; numero: string; pedido_id: number; pedido_numero: string;
@@ -17,7 +18,7 @@ export default function FacturasPage() {
   const [facturas, setFacturas] = useState<Factura[]>([]);
   const [loading, setLoading] = useState(true);
   const [detail, setDetail] = useState<FacturaDetalle | null>(null);
-  const [msg, setMsg] = useState("");
+  const toast = useToast();
 
   const load = () => {
     api.get("/ventas/facturas").then((r) => { setFacturas(r.data); setLoading(false); });
@@ -33,20 +34,17 @@ export default function FacturasPage() {
 
   const handlePagar = async (id: number) => {
     await api.post(`/ventas/facturas/${id}/pagar`);
-    setMsg("Factura marcada como pagada"); load();
-    setTimeout(() => setMsg(""), 3000);
+    toast.success("Factura marcada como pagada"); load();
   };
 
   const handleAnular = async (id: number) => {
     await api.post(`/ventas/facturas/${id}/anular`);
-    setMsg("Factura anulada"); load();
-    setTimeout(() => setMsg(""), 3000);
+    toast.success("Factura anulada"); load();
   };
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, color: "#1a1d23", marginBottom: 20 }}>Facturas de Venta</h2>
-      {msg && <div style={{ background: "#dcfce7", color: "#166534", padding: "10px 14px", borderRadius: 6, marginBottom: 16, fontSize: 13 }}>{msg}</div>}
+      <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 20 }}>Facturas de Venta</h2>
 
       <div style={card}>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -65,13 +63,13 @@ export default function FacturasPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} style={{ ...td, textAlign: "center", color: "#9ca3af" }}>Cargando...</td></tr>
+              <tr><td colSpan={9} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Cargando...</td></tr>
             ) : facturas.length === 0 ? (
-              <tr><td colSpan={9} style={{ ...td, textAlign: "center", color: "#9ca3af" }}>Sin facturas registradas</td></tr>
+              <tr><td colSpan={9} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Sin facturas registradas</td></tr>
             ) : (
               facturas.map((f) => (
                 <tr key={f.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ ...td, fontWeight: 600, color: "#6366f1", cursor: "pointer" }} onClick={() => openDetail(f.id)}>{f.numero}</td>
+                  <td style={{ ...td, fontWeight: 600, color: "var(--primary)", cursor: "pointer" }} onClick={() => openDetail(f.id)}>{f.numero}</td>
                   <td style={td}>{f.pedido_numero}</td>
                   <td style={td}>{f.cliente_nombre}</td>
                   <td style={td}>{new Date(f.fecha_emision).toLocaleDateString()}</td>
@@ -88,8 +86,8 @@ export default function FacturasPage() {
                   <td style={td}>
                     {f.estado === "pendiente" && (
                       <>
-                        <button onClick={() => handlePagar(f.id)} style={{ ...btnSm, color: "#16a34a", marginRight: 4 }}>Pagar</button>
-                        <button onClick={() => handleAnular(f.id)} style={{ ...btnSm, color: "#dc2626" }}>Anular</button>
+                        <button onClick={() => handlePagar(f.id)} style={{ ...btnSm, color: "var(--success)", marginRight: 4 }}>Pagar</button>
+                        <button onClick={() => handleAnular(f.id)} style={{ ...btnSm, color: "var(--danger)" }}>Anular</button>
                       </>
                     )}
                   </td>
@@ -135,16 +133,16 @@ export default function FacturasPage() {
 
             <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 12 }}>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4, fontSize: 13 }}>
-                <span style={{ color: "#6b7280", marginRight: 40 }}>Subtotal:</span>
+                <span style={{ color: "var(--text-secondary)", marginRight: 40 }}>Subtotal:</span>
                 <span style={{ fontWeight: 600 }}>${detail.subtotal.toFixed(2)}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4, fontSize: 13 }}>
-                <span style={{ color: "#6b7280", marginRight: 40 }}>IVA ({detail.impuesto_porcentaje}%):</span>
+                <span style={{ color: "var(--text-secondary)", marginRight: 40 }}>IVA ({detail.impuesto_porcentaje}%):</span>
                 <span style={{ fontWeight: 600 }}>${detail.impuesto_total.toFixed(2)}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 16 }}>
-                <span style={{ color: "#6b7280", marginRight: 40 }}>Total:</span>
-                <span style={{ fontWeight: 700, color: "#6366f1" }}>${detail.total.toFixed(2)}</span>
+                <span style={{ color: "var(--text-secondary)", marginRight: 40 }}>Total:</span>
+                <span style={{ fontWeight: 700, color: "var(--primary)" }}>${detail.total.toFixed(2)}</span>
               </div>
             </div>
 
@@ -161,8 +159,8 @@ export default function FacturasPage() {
   );
 }
 
-const card: React.CSSProperties = { background: "#fff", padding: 20, borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.08)", overflowX: "auto" };
-const btnPri: React.CSSProperties = { padding: "8px 16px", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSm: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", color: "#374151", border: "1px solid #d1d5db", borderRadius: 4, cursor: "pointer", fontSize: 12 };
-const th: React.CSSProperties = { padding: "10px 12px", textAlign: "left", fontSize: 12, color: "#6b7280", textTransform: "uppercase", fontWeight: 600 };
+const card: React.CSSProperties = { background: "var(--surface)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow)", overflowX: "auto" };
+const btnPri: React.CSSProperties = { padding: "8px 16px", color: "#fff", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
+const btnSm: React.CSSProperties = { padding: "4px 10px", background: "#f3f4f6", color: "var(--text)", border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer", fontSize: 12 };
+const th: React.CSSProperties = { padding: "10px 12px", textAlign: "left", fontSize: 12, color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600 };
 const td: React.CSSProperties = { padding: "10px 12px", fontSize: 14 };
