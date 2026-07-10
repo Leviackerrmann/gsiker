@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+{% set active_page = 'nueva' %}
+
+{% block title %}{% if edit_mode %}Editando {{ solicitud.numero_solicitud }}{% else %}Nueva Solicitud de Compra{% endif %}{% endblock %}
+
+{% block content %}
+<div class="fade-in-up">
+
+    <input type="hidden" id="editMode" value="{{ 'true' if edit_mode else 'false' }}">
+    <input type="hidden" id="editSolicitudId" value="{{ solicitud.id if solicitud else '' }}">
+
+    <!-- Borrador restore bar -->
+    <div id="borradorBar" class="borrador-bar" style="display:none;">
+        <i class="bi bi-pencil-square"></i>
+        <span>Tienes un borrador sin guardar</span>
+        <div class="borrador-actions">
+            <button class="btn btn-sm btn-primary" id="btnRestaurarBorrador"><i class="bi bi-arrow-repeat"></i> Restaurar</button>
+            <button class="btn btn-sm btn-ghost" id="btnDescartarBorrador">Descartar</button>
+        </div>
+    </div>
+
+    {% if not edit_mode %}
+    <div class="card-main mb-4">
+        <div class="card-main-body" style="padding:1.25rem 1.75rem;">
+            <div style="display:flex;gap:2rem;flex-wrap:wrap;align-items:center;">
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <i class="bi bi-file-earmark-text" style="font-size:1.5rem;color:var(--primary);"></i>
+                    <div>
+                        <div style="font-size:1.1rem;font-weight:700;color:var(--gray-800);">{{ stats.total }}</div>
+                        <div style="font-size:0.78rem;color:var(--gray-400);">Total Solicitudes</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <i class="bi bi-box-seam" style="font-size:1.5rem;color:var(--primary);"></i>
+                    <div>
+                        <div style="font-size:1.1rem;font-weight:700;color:var(--gray-800);">{{ stats.total_skus }}</div>
+                        <div style="font-size:0.78rem;color:var(--gray-400);">SKU Registrados</div>
+                    </div>
+                </div>
+                {% if ultima %}
+                <div style="margin-left:auto;font-size:0.82rem;color:var(--gray-400);">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Ultima solicitud: <strong>{{ ultima.numero_solicitud }}</strong>
+                    <span class="mx-1">·</span>
+                    {{ ultima.fecha.strftime('%d/%m/%Y') if ultima.fecha else '' }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <input type="hidden" id="editMode" value="{% if edit_mode %}1{% else %}0{% endif %}">
+    <input type="hidden" id="editSolicitudId" value="{% if edit_mode %}{{ solicitud.id }}{% else %}0{% endif %}">
+
+    <div class="card-main">
+        <div class="card-main-body">
+
+            <!-- Solicitante -->
+            <div class="subsection">
+                <div class="subsection-title">
+                    <i class="bi bi-person-badge"></i>
+                    Datos del Solicitante
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Empresa <span class="required">*</span></label>
+                        <select class="form-select" id="empresa">
+                            <option value="">Seleccione una empresa</option>
+                            {% for e in empresas %}
+                            <option value="{{ e.nombre }}" {% if edit_mode and solicitud.empresa == e.nombre %}selected{% endif %}>{{ e.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Area <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="area" placeholder="Ej: Producción, Logística..." value="{% if edit_mode %}{{ solicitud.area or '' }}{% endif %}">
+                    </div>
+                    <div class="form-group">
+                        <label>Nombre del Solicitante <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="nombreSolicitante" placeholder="Nombre completo" value="{% if edit_mode %}{{ solicitud.nombre_solicitante or '' }}{% endif %}">
+                    </div>
+                    <div class="form-group">
+                        <label>Cargo del Solicitante <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="cargoSolicitante" placeholder="Ej: Jefe de Planta" value="{% if edit_mode %}{{ solicitud.cargo_solicitante or '' }}{% endif %}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Jefe -->
+            <div class="subsection">
+                <div class="subsection-title">
+                    <i class="bi bi-person-check"></i>
+                    Jefe Inmediato / Aprobaci&oacute;n
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Nombre del Jefe <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="jefeNombre" placeholder="Nombre completo" value="{% if edit_mode %}{{ solicitud.jefe_nombre or '' }}{% endif %}">
+                    </div>
+                    <div class="form-group">
+                        <label>Cargo del Jefe <span class="required">*</span></label>
+                        <input type="text" class="form-input" id="jefeCargo" placeholder="Ej: Gerente General" value="{% if edit_mode %}{{ solicitud.jefe_cargo or '' }}{% endif %}">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Items -->
+            <div class="subsection" style="border-left-color: var(--primary-dark);">
+                <div class="subsection-title">
+                    <i class="bi bi-cart-plus"></i>
+                    Agregar Items
+                </div>
+
+                <!-- Fecha Global -->
+                <div class="date-global-wrapper">
+                    <label><i class="bi bi-calendar-event me-1" style="color:var(--primary)"></i>Fecha de Entrega Global</label>
+                    <input type="date" id="fechaEntregaGlobal">
+                    <div class="hint"><i class="bi bi-info-circle me-1"></i>Se aplicar&aacute; a todos los items que agregue</div>
+                </div>
+
+                <!-- Buscador -->
+                <div class="search-row">
+                    <div class="search-field">
+                        <label>Buscar o Crear SKU</label>
+                        <div class="input-wrap">
+                            <input type="text" id="buscarSKU" placeholder="Buscar por c&oacute;digo o descripci&oacute;n...">
+                            <i class="bi bi-search"></i>
+                        </div>
+                        <div id="resultadosBusqueda" class="list-group"></div>
+                    </div>
+                    <button class="btn-new-sku" type="button" data-bs-toggle="modal" data-bs-target="#modalCrearSKU">
+                        <i class="bi bi-plus-lg"></i>
+                        Nuevo SKU
+                    </button>
+                </div>
+
+                <!-- Tabla -->
+                <div class="table-wrap">
+                    <table class="table-items" id="tablaItems">
+                        <thead>
+                            <tr>
+                                <th style="width:95px">SKU</th>
+                                <th>Descripci&oacute;n</th>
+                                <th style="width:70px">Cant.</th>
+                                <th style="width:120px">Unidad</th>
+                                <th style="width:120px">Observaciones</th>
+                                <th style="width:110px">Destino</th>
+                                <th style="width:125px">F. Entrega</th>
+                                <th style="width:40px"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsBody"></tbody>
+                    </table>
+                    <div class="empty-items" id="emptyItemsMessage">
+                        <i class="bi bi-inbox"></i>
+                        <span>No hay items agregados. Busque un SKU arriba para comenzar.</span>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="action-bar">
+                    <input type="hidden" id="solicitudIdHidden" value="{% if edit_mode %}{{ solicitud.id }}{% endif %}">
+                    <button class="btn btn-primary btn-lg" id="btnGuardarSolicitud">
+                        <i class="bi bi-floppy"></i> {% if edit_mode %}Actualizar Solicitud{% else %}Guardar Solicitud{% endif %}
+                    </button>
+                    <button class="btn btn-outline btn-lg" id="btnGenerarPDF" disabled>
+                        <i class="bi bi-filetype-pdf"></i> Generar PDF
+                    </button>
+                    <button class="btn btn-ghost btn-lg" id="btnLimpiar">
+                        <i class="bi bi-arrow-counterclockwise"></i> {% if edit_mode %}Cancelar{% else %}Limpiar{% endif %}
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal Crear SKU -->
+<div class="modal fade modal-custom" id="modalCrearSKU" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-box-seam me-2"></i>Crear Nuevo SKU</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formCrearSKU">
+                    <div class="form-group mb-3">
+                        <label>Descripci&oacute;n <span class="required">*</span></label>
+                        <textarea class="form-input" id="nuevaDescripcion" rows="3" placeholder="Describa el art&iacute;culo..."></textarea>
+                    </div>
+                    <div class="form-grid mb-3">
+                        <div class="form-group">
+                            <label>Categor&iacute;a <span class="required">*</span></label>
+                            <select class="form-select" id="nuevaCategoria">
+                                <option value="">Seleccione</option>
+                                <option value="ACCESORIOS/COMPONENTES">ACCESORIOS / COMPONENTES</option>
+                                <option value="CONSUMIBLES GENERALES">CONSUMIBLES GENERALES</option>
+                                <option value="HERRAMIENTAS">HERRAMIENTAS</option>
+                                <option value="INSUMOS INDIRECTOS DE PRODUCCION">INSUMOS INDIRECTOS DE PRODUCCI&Oacute;N</option>
+                                <option value="MATERIA PRIMA">MATERIA PRIMA</option>
+                                <option value="REPUESTOS">REPUESTOS</option>
+                                <option value="SERVICIOS">SERVICIOS</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Subcategor&iacute;a <span class="required">*</span></label>
+                            <select class="form-select" id="nuevaSubcategoria" disabled>
+                                <option value="">Primero categor&iacute;a...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group mb-3">
+                        <label>Unidad de Medida <span class="required">*</span></label>
+                        <select class="form-select" id="nuevaUnidad">
+                            <option value="Unidad">Unidad</option>
+                            <option value="Caja">Caja</option>
+                            <option value="Paquete">Paquete</option>
+                            <option value="Kilogramo (kg)">Kilogramo (kg)</option>
+                            <option value="Metro (mts)">Metro (mts)</option>
+                            <option value="Litro (L)">Litro (L)</option>
+                            <option value="Tonelada m&eacute;trica (t / MT)">Tonelada m&eacute;trica (t / MT)</option>
+                            <option value="Rollo">Rollo</option>
+                            <option value="Bolsa">Bolsa</option>
+                            <option value="Gal&oacute;n (gal)">Gal&oacute;n (gal)</option>
+                            <option value="Libra (lb)">Libra (lb)</option>
+                            <option value="Onza (oz)">Onza (oz)</option>
+                            <option value="Pieza (pz)">Pieza (pz)</option>
+                            <option value="Juego">Juego</option>
+                            <option value="Cart&oacute;n">Cart&oacute;n</option>
+                            <option value="Frasco">Frasco</option>
+                            <option value="Tambor">Tambor</option>
+                            <option value="Barril">Barril</option>
+                            <option value="Pallet">Pallet</option>
+                            <option value="Docena (dz)">Docena (dz)</option>
+                            <option value="Par">Par</option>
+                            <option value="Kit">Kit</option>
+                            <option value="Bobina">Bobina</option>
+                            <option value="Saco">Saco</option>
+                            <option value="Metro cuadrado (m&sup2;)">Metro cuadrado (m&sup2;)</option>
+                            <option value="Metro c&uacute;bico (m&sup3;)">Metro c&uacute;bico (m&sup3;)</option>
+                            <option value="Mililitro (ml)">Mililitro (ml)</option>
+                            <option value="Gramo (g)">Gramo (g)</option>
+                            <option value="Tonel">Tonel</option>
+                        </select>
+                    </div>
+                    <div style="background:var(--primary-soft);border-left:4px solid var(--primary);border-radius:6px;padding:0.75rem 1rem;font-size:0.85rem;color:var(--text-primary);">
+                        <i class="bi bi-info-circle me-1"></i>
+                        El c&oacute;digo SKU se generar&aacute; autom&aacute;ticamente seg&uacute;n la categor&iacute;a
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarCrearSKU">
+                    <i class="bi bi-check-lg"></i> Crear SKU
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Unidad -->
+<div class="modal fade modal-custom" id="modalEditarUnidadSKU" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Unidad de Medida</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-3" style="font-size:0.9rem"><strong>SKU:</strong> <span id="editarSkuCodigo" class="sku-tag ms-2"></span></p>
+                <input type="hidden" id="editarSkuId">
+                <div class="form-group">
+                    <label>Unidad de Medida <span class="required">*</span></label>
+                    <select class="form-select" id="editarUnidad">
+                        <option value="Unidad">Unidad</option>
+                        <option value="Caja">Caja</option>
+                        <option value="Paquete">Paquete</option>
+                        <option value="Kilogramo (kg)">Kilogramo (kg)</option>
+                        <option value="Metro (mts)">Metro (mts)</option>
+                        <option value="Litro (L)">Litro (L)</option>
+                        <option value="Tonelada m&eacute;trica (t / MT)">Tonelada m&eacute;trica (t / MT)</option>
+                        <option value="Rollo">Rollo</option>
+                        <option value="Bolsa">Bolsa</option>
+                        <option value="Gal&oacute;n (gal)">Gal&oacute;n (gal)</option>
+                        <option value="Libra (lb)">Libra (lb)</option>
+                        <option value="Onza (oz)">Onza (oz)</option>
+                        <option value="Pieza (pz)">Pieza (pz)</option>
+                        <option value="Juego">Juego</option>
+                        <option value="Cart&oacute;n">Cart&oacute;n</option>
+                        <option value="Frasco">Frasco</option>
+                        <option value="Tambor">Tambor</option>
+                        <option value="Barril">Barril</option>
+                        <option value="Pallet">Pallet</option>
+                        <option value="Docena (dz)">Docena (dz)</option>
+                        <option value="Par">Par</option>
+                        <option value="Kit">Kit</option>
+                        <option value="Bobina">Bobina</option>
+                        <option value="Saco">Saco</option>
+                        <option value="Metro cuadrado (m&sup2;)">Metro cuadrado (m&sup2;)</option>
+                        <option value="Metro c&uacute;bico (m&sup3;)">Metro c&uacute;bico (m&sup3;)</option>
+                        <option value="Mililitro (ml)">Mililitro (ml)</option>
+                        <option value="Gramo (g)">Gramo (g)</option>
+                    </select>
+                </div>
+                <div class="mt-3" style="background:#fff8e6;border-left:4px solid #f59e0b;border-radius:6px;padding:0.75rem 1rem;font-size:0.85rem;color:#92400e;">
+                    <i class="bi bi-exclamation-triangle me-1"></i>
+                    Esta actualizaci&oacute;n afectar&aacute; todas las solicitudes futuras que usen este SKU
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarEditarUnidad">
+                    <i class="bi bi-check-lg"></i> Actualizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ static_url('js/solicitud.js') }}"></script>
+{% endblock %}

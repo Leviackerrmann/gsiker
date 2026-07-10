@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Nueva Solicitud de Compra{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <h2 class="mb-4">📝 Nueva Solicitud de Compra</h2>
+        
+        <div class="card shadow">
+            <div class="card-body">
+                <!-- Datos del Solicitante -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h5 class="text-primary mb-3">📋 Información del Solicitante</h5>
+                    </div>
+		    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Empresa *</label>
+                        <select class="form-select" id="empresa" required>
+                            <option value="">Seleccione una empresa</option>
+                            <option value="UNI">UNI</option>
+                            <option value="FUSIONPLAST">FUSIONPLAST</option>
+                            <option value="GAMAPLASTIC">GAMAPLASTIC</option>
+                            <option value="HERTEC">HERTEC</option>
+                            <option value="STPACK">STPACK</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Área *</label>
+                        <input type="text" class="form-control" id="area" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Nombre del Solicitante *</label>
+                        <input type="text" class="form-control" id="nombreSolicitante" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Cargo del Solicitante *</label>
+                        <input type="text" class="form-control" id="cargoSolicitante" required>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+		<!-- Datos de aprobación -->
+		<div class="row mb-4">
+		  <div class="col-12">
+		    <h5 class="text-primary mb-3">Aprobación / Jefe inmediato</h5>
+		  </div>
+
+		  <div class="col-md-6 mb-3">
+		    <label class="form-label fw-bold">Nombre del Jefe *</label>
+		    <input type="text" class="form-control" id="jefeNombre" required>
+		  </div>
+
+		  <div class="col-md-6 mb-3">
+		    <label class="form-label fw-bold">Cargo del Jefe *</label>
+		    <input type="text" class="form-control" id="jefeCargo" required>
+		  </div>
+		</div>
+
+
+                <!-- Búsqueda de SKU -->
+                <div class="mb-4">
+                    <h5 class="text-primary mb-3">🔍 Agregar Items</h5>
+		<!-- Campo de Fecha Global -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">📅 Fecha de Entrega</label>
+                            <input type="date" class="form-control form-control-lg" id="fechaEntregaGlobal">
+                            <small class="text-muted">Esta fecha se aplicará a todos los items que agregues</small>
+                        </div>
+                    </div>
+                    <label class="form-label fw-bold">Buscar o Crear SKU</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="buscarSKU" placeholder="Buscar por código o descripción...">
+                        <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#modalCrearSKU">
+                            ➕ Crear Nuevo SKU
+                        </button>
+                    </div>
+                    <div id="resultadosBusqueda" class="list-group mt-2"></div>
+                </div>
+
+                <!-- Tabla de Items -->
+                <div class="table-responsive">
+                    <table class="table table-bordered" id="tablaItems">
+                        <thead class="table-primary">
+                            <tr>
+                                <th>SKU</th>
+                                <th>Descripción</th>
+                                <th>Cantidad</th>
+                                <th>Unidad</th>
+                                <th>Observaciones</th>
+                                <th>Destino</th>
+                                <th>Fecha de Entrega</th>                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsBody">
+                            <!-- Las filas se agregarán dinámicamente con JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="d-flex gap-2 mt-4">
+                    <button class="btn btn-primary btn-lg" id="btnGuardarSolicitud">
+                        💾 Guardar Solicitud
+                    </button>
+                    <button class="btn btn-secondary btn-lg" id="btnGenerarPDF" disabled>
+                        📄 Generar PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Crear SKU -->
+<div class="modal fade" id="modalCrearSKU" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Crear Nuevo SKU</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formCrearSKU">
+                    <div class="mb-3">
+                        <label class="form-label">Descripción *</label>
+                        <textarea class="form-control" id="nuevaDescripcion" rows="3" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Categoría *</label>
+                        <select class="form-select" id="nuevaCategoria" required>
+                            <option value="">Seleccione una categoría</option>
+                            <option value="ACCESORIOS/COMPONENTES">ACCESORIOS/COMPONENTES</option>
+                            <option value="CONSUMIBLES GENERALES">CONSUMIBLES GENERALES</option>
+                            <option value="HERRAMIENTAS">HERRAMIENTAS</option>
+                            <option value="INSUMOS INDIRECTOS DE PRODUCCION">INSUMOS INDIRECTOS DE PRODUCCION</option>
+                            <option value="MATERIA PRIMA">MATERIA PRIMA</option>
+                            <option value="REPUESTOS">REPUESTOS</option>
+                            <option value="SERVICIOS">SERVICIOS</option>
+                        </select>
+
+			<label for="nuevaSubcategoria" class="form-label mt-2">Subcategoría *</label>
+			<select id="nuevaSubcategoria" class="form-select" required disabled>
+			  <option value="">Seleccione una categoría primero...</option>
+			</select>
+
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Unidad de Medida *</label>
+                        <select class="form-select" id="nuevaUnidad" required>
+                            <option value="Unidad">Unidad</option>
+                            <option value="Caja">Caja</option>
+                            <option value="Paquete">Paquete</option>
+                        </select>
+                    </div>
+                    <div class="alert alert-info">
+                        <small>ℹ️ El código SKU se generará automáticamente según la categoría seleccionada</small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarCrearSKU">Crear SKU</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/solicitud.js') }}"></script>
+{% endblock %}

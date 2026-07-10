@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% set active_page = 'admin' %}
+
+{% block title %}Admin - Solicitudes{% endblock %}
+
+{% block breadcrumb %}
+<div class="breadcrumb-bar">
+    <a href="{{ url_for('main.index') }}">Inicio</a>
+    <span class="sep"><i class="bi bi-chevron-right"></i></span>
+    <a href="{{ url_for('main.admin_dashboard') }}">Panel Admin</a>
+    <span class="sep"><i class="bi bi-chevron-right"></i></span>
+    <span class="current">Solicitudes</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in-up">
+
+    <div class="page-title">
+        <h1><i class="bi bi-list-check me-2" style="color:var(--primary);"></i>Todas las Solicitudes</h1>
+        <p>Administraci&oacute;n de solicitudes del sistema</p>
+    </div>
+
+    <!-- Admin Tabs -->
+    <div style="display:flex;gap:0.5rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+        <a href="{{ url_for('main.admin_dashboard') }}" class="btn btn-sm btn-outline">
+            <i class="bi bi-people me-1"></i>Usuarios
+        </a>
+        <a href="{{ url_for('main.admin_solicitudes') }}" class="btn btn-sm btn-primary">
+            <i class="bi bi-list-check me-1"></i>Solicitudes
+        </a>
+        <a href="{{ url_for('main.admin_dashboard_global') }}" class="btn btn-sm btn-outline">
+            <i class="bi bi-bar-chart-fill me-1"></i>Dashboard
+        </a>
+    </div>
+
+    <div class="card-main">
+        <div class="card-main-body">
+
+            <!-- Drill-down stats -->
+            {% if solicitante_stats %}
+            <div style="background:var(--primary-soft);border-radius:var(--radius);padding:1rem;margin-bottom:1.25rem;border:1px solid rgba(30,64,175,0.15);">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;">
+                    <div>
+                        <strong style="font-size:1rem;color:var(--text-primary);">{{ solicitante_stats.nombre }}</strong>
+                        <span style="font-size:0.82rem;color:var(--text-secondary);margin-left:0.75rem;">
+                            {{ solicitante_stats.total }} solicitudes &middot;
+                            {{ solicitante_stats.total_items }} items pedidos
+                        </span>
+                    </div>
+                    <div style="font-size:0.82rem;color:var(--text-secondary);">
+                        {% if solicitante_stats.primera %}
+                        Primera: {{ solicitante_stats.primera.fecha.strftime('%d/%m/%Y') }}
+                        {% endif %}
+                        {% if solicitante_stats.ultima %}
+                        &middot; &Uacute;ltima: {{ solicitante_stats.ultima.fecha.strftime('%d/%m/%Y') }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div style="margin-top:0.5rem;">
+                    <a href="{{ url_for('main.admin_solicitudes_exportar', solicitante=solicitante_stats.nombre) }}" class="btn btn-sm btn-outline">
+                        <i class="bi bi-download me-1"></i>Exportar CSV de {{ solicitante_stats.nombre }}
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Filters -->
+            <form method="GET" action="{{ url_for('main.admin_solicitudes') }}" id="filterForm">
+                <div class="search-bar" style="flex-wrap:wrap;">
+                    <input type="text" class="form-input" name="q" placeholder="Buscar n&uacute;mero, solicitante, empresa..." value="{{ q }}" style="max-width:240px;">
+                    <select class="form-select" name="solicitante" style="width:160px;">
+                        <option value="">Todos los usuarios</option>
+                        {% for u in usuarios %}
+                        <option value="{{ u.nombre }}" {% if u.nombre == solicitante %}selected{% endif %}>{{ u.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    <select class="form-select" name="empresa" style="width:140px;">
+                        <option value="">Todas las empresas</option>
+                        {% for e in empresas %}
+                        <option value="{{ e }}" {% if e == empresa %}selected{% endif %}>{{ e }}</option>
+                        {% endfor %}
+                    </select>
+                    <input type="date" class="form-input" name="desde" value="{{ desde }}" style="width:140px;" title="Desde">
+                    <input type="date" class="form-input" name="hasta" value="{{ hasta }}" style="width:140px;" title="Hasta">
+                    <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                    <input type="hidden" name="sort_order" value="{{ sort_order }}">
+                    <button type="submit" class="btn btn-primary btn-sm" id="btnFiltrarSolicitudes" title="Buscar"><i class="bi bi-search"></i></button>
+                    {% if q or solicitante or empresa or desde or hasta %}
+                    <a href="{{ url_for('main.admin_solicitudes') }}" class="btn btn-ghost btn-sm"><i class="bi bi-x-lg"></i> Limpiar</a>
+                    {% endif %}
+                    <a href="{{ url_for('main.admin_solicitudes_exportar', q=q, solicitante=solicitante, empresa=empresa, desde=desde, hasta=hasta) }}" class="btn btn-outline btn-sm" style="margin-left:auto;">
+                        <i class="bi bi-download me-1"></i>CSV
+                    </a>
+                </div>
+            </form>
+
+            {% if solicitudes.items %}
+            <div class="table-wrap">
+                <table class="solicitudes-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <a href="{{ url_for('main.admin_solicitudes', sort_by='numero_solicitud', sort_order='asc' if sort_by == 'numero_solicitud' and sort_order == 'desc' else 'desc', q=q, solicitante=solicitante, empresa=empresa, desde=desde, hasta=hasta) }}">
+                                    N&uacute;mero
+                                    {% if sort_by == 'numero_solicitud' %}<i class="bi bi-chevron-{{ 'up' if sort_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('main.admin_solicitudes', sort_by='fecha', sort_order='asc' if sort_by == 'fecha' and sort_order == 'desc' else 'desc', q=q, solicitante=solicitante, empresa=empresa, desde=desde, hasta=hasta) }}">
+                                    Fecha
+                                    {% if sort_by == 'fecha' %}<i class="bi bi-chevron-{{ 'up' if sort_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('main.admin_solicitudes', sort_by='nombre_solicitante', sort_order='asc' if sort_by == 'nombre_solicitante' and sort_order == 'desc' else 'desc', q=q, solicitante=solicitante, empresa=empresa, desde=desde, hasta=hasta) }}">
+                                    Solicitante
+                                    {% if sort_by == 'nombre_solicitante' %}<i class="bi bi-chevron-{{ 'up' if sort_order == 'asc' else 'down' }}"></i>{% endif %}
+                                </a>
+                            </th>
+                            <th>Empresa</th>
+                            <th>Area</th>
+                            <th>Items</th>
+                            <th style="width:150px">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in solicitudes.items %}
+                        <tr>
+                            <td><span class="sku-tag">{{ s.numero_solicitud }}</span></td>
+                            <td>{{ s.fecha.strftime('%d/%m/%Y') if s.fecha else '' }}</td>
+                            <td>{{ s.nombre_solicitante }}</td>
+                            <td>{{ s.empresa }}</td>
+                            <td>{{ s.area }}</td>
+                            <td>{{ s.items|length }}</td>
+                            <td>
+                                <div style="display:flex;gap:0.3rem;">
+                                    <a href="{{ url_for('main.solicitud_detalle', id=s.id) }}" class="btn btn-outline btn-sm" title="Ver">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('main.admin_solicitud_editar', id=s.id) }}" class="btn btn-outline btn-sm" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button class="btn btn-primary btn-sm" title="Ver PDF" onclick="verPDF({{ s.id }})">
+                                        <i class="bi bi-filetype-pdf"></i>
+                                    </button>
+                                    <button class="btn btn-ghost btn-sm" style="color:var(--info);" title="Nota admin" onclick='abrirModalNota({{ s.id }}, {{ (s.nota_admin or '')|tojson }})'>
+                                        <i class="bi {{ 'bi-sticky-fill' if s.nota_admin else 'bi-sticky' }}"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination-wrap">
+                {% if solicitudes.has_prev %}
+                <a href="{{ url_for('main.admin_solicitudes', page=1, q=q, solicitante=solicitante, empresa=empresa, desde=desde, hasta=hasta, sort_by=sort_by, sort_order=sort_order) }}" class="page-link" title="Primera">&laquo;</a>
+                <a href="{{ url_for('main.admin_solicitudes', page=solicitudes.prev_num, q=q, solicitante=solicitante, empresa=empresa, desde=desde, hasta=hasta, sort_by=sort_by, sort_order=sort_order) }}" class="page-link" title="Anterior">&lsaquo;</a>
+                {% else %}
+                <span class="page-link disabled">&laquo;</span>
+                <span class="page-link disabled">&lsaquo;</span>
+                {% endif %}
+
+                <span class="page-info">P&aacute;gina <strong>{{ solicitudes.page }}</strong> de <strong>{{ solicitudes.pages }}</strong></span>
+
+                <form method="GET" action="{{ url_for('main.admin_solicitudes') }}" class="page-jump">
+                    <input type="hidden" name="q" value="{{ q }}">
+                    <input type="hidden" name="solicitante" value="{{ solicitante }}">
+                    <input type="hidden" name="empresa" value="{{ empresa }}">
+                    <input type="hidden" name="desde" value="{{ desde }}">
+                    <input type="hidden" name="hasta" value="{{ hasta }}">
+                    <input type="hidden" name="sort_by" value="{{ sort_by }}">
+                    <input type="hidden" name="sort_order" value="{{ sort_order }}">
+                    <input type="number" name="page" min="1" max="{{ solicitudes.pages }}" placeholder="Nº" style="width:50px;">
+                    <button type="submit" class="btn btn-sm btn-ghost" style="padding:0.3rem 0.5rem;">Ir</button>
+                </form>
+
+                {% if solicitudes.has_next %}
+                <a href="{{ url_for('main.admin_solicitudes', page=solicitudes.next_num, q=q, solicitante=solicitante, empresa=empresa, desde=desde, hasta=hasta, sort_by=sort_by, sort_order=sort_order) }}" class="page-link" title="Siguiente">&rsaquo;</a>
+                <a href="{{ url_for('main.admin_solicitudes', page=solicitudes.pages, q=q, solicitante=solicitante, empresa=empresa, desde=desde, hasta=hasta, sort_by=sort_by, sort_order=sort_order) }}" class="page-link" title="&Uacute;ltima">&raquo;</a>
+                {% else %}
+                <span class="page-link disabled">&rsaquo;</span>
+                <span class="page-link disabled">&raquo;</span>
+                {% endif %}
+            </div>
+
+            {% else %}
+            <div class="empty-items">
+                <i class="bi bi-inbox"></i>
+                <span>{% if q or solicitante or empresa or desde or hasta %}No se encontraron solicitudes con los filtros aplicados{% else %}No hay solicitudes registradas{% endif %}</span>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+</div>
+
+<!-- Modal Nota Admin -->
+<div class="modal fade modal-custom" id="modalNotaAdmin" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-sticky me-2"></i>Nota del administrador</h5>
+            </div>
+            <div class="modal-body">
+                <textarea id="notaAdminText" class="form-input" style="width:100%;min-height:100px;resize:vertical;" placeholder="Escriba una nota interna..."></textarea>
+                <div id="errorNotaAdmin" style="display:none;font-size:0.82rem;color:#dc3545;margin-top:0.4rem;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-ghost" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-primary" id="btnGuardarNotaAdmin"><i class="bi bi-check-lg"></i> Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('filterForm')?.addEventListener('submit', function() {
+    var btn = document.getElementById('btnFiltrarSolicitudes');
+    if (btn) btn.disabled = true;
+});
+
+let notaSolicitudId = null;
+
+function abrirModalNota(id, nota) {
+    notaSolicitudId = id;
+    document.getElementById('notaAdminText').value = nota || '';
+    document.getElementById('errorNotaAdmin').style.display = 'none';
+    new bootstrap.Modal(document.getElementById('modalNotaAdmin')).show();
+}
+
+document.getElementById('btnGuardarNotaAdmin')?.addEventListener('click', async function() {
+    const btn = this;
+    const nota = document.getElementById('notaAdminText').value.trim();
+    btn.disabled = true;
+    try {
+        const res = await fetch('/admin/solicitud/' + notaSolicitudId + '/nota', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nota: nota })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast('Nota guardada', 'success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            document.getElementById('errorNotaAdmin').textContent = data.message || 'Error al guardar';
+            document.getElementById('errorNotaAdmin').style.display = 'block';
+        }
+    } catch (e) {
+        showToast('Error del servidor', 'error');
+    }
+    btn.disabled = false;
+});
+
+</script>
+{% endblock %}

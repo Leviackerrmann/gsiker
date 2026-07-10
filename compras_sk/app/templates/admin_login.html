@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Sistema de Solicitudes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ static_url('css/style.css') }}">
+    <style>
+        [data-theme="dark"] { --bg-page: #0f172a; --card-bg: #1e293b; --text-primary: #e2e8f0; --text-secondary: #94a3b8; }
+    </style>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    </script>
+</head>
+<body>
+    <div class="login-page">
+        <div class="login-card">
+            <div class="login-logo">
+                <div class="icon-circle">
+                    <i class="bi bi-shield-lock"></i>
+                </div>
+                <h2>Panel Administrativo</h2>
+                <p>Ingrese sus credenciales</p>
+            </div>
+
+            {% if error %}
+            <div class="flash-msg flash-error" style="margin-bottom:1rem;">
+                <i class="bi bi-exclamation-circle-fill"></i>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('main.admin_login') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-group" style="margin-bottom:1rem;">
+                    <label>Usuario</label>
+                    <input type="text" class="form-input" name="username" placeholder="admin" required style="width:100%;" autofocus>
+                </div>
+                <div class="form-group" style="margin-bottom:1.5rem;">
+                    <label>Contrase&ntilde;a</label>
+                    <input type="password" class="form-input" name="password" placeholder="Ingrese su contrase&ntilde;a" required style="width:100%;">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">
+                    <i class="bi bi-box-arrow-in-right"></i> Ingresar
+                </button>
+            </form>
+
+            <div style="text-align:center;margin-top:1.25rem;">
+                <a href="{{ url_for('main.index') }}" style="font-size:0.82rem;color:var(--text-secondary);text-decoration:none;">
+                    <i class="bi bi-arrow-left me-1"></i>Volver al inicio
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

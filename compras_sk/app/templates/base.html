@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="{{ session.get('theme', 'light') }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema de Solicitudes de Compra{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ static_url('css/style.css') }}">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <script>try{const t=localStorage.getItem('theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+</head>
+<body>
+
+    <header class="app-header">
+        <div class="app-header-left">
+            <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle sidebar">
+                <i class="bi bi-list"></i>
+            </button>
+            <i class="bi bi-clipboard2-check"></i>
+            <span>Sistema de Solicitudes de Compra</span>
+        </div>
+        <div class="app-header-right">
+            <button class="theme-toggle" id="themeToggle" title="Cambiar tema">
+                <i class="bi bi-moon-fill" id="themeIcon"></i>
+            </button>
+            <span class="user-identidad" id="userIdentidad" style="cursor:pointer;" title="Cambiar usuario">
+                <i class="bi bi-person-circle me-1"></i>
+                <span id="userNombre">{{ session.get('identidad', 'Seleccionar usuario') }}</span>
+                <i class="bi bi-chevron-down ms-1" style="font-size:0.65rem;"></i>
+            </span>
+            <div class="user-avatar" id="userAvatar">{{ (session.get('identidad', 'US')[:2]).upper() }}</div>
+        </div>
+    </header>
+
+    <div class="app-body">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <span class="sidebar-brand">Men&uacute;</span>
+                <button class="sidebar-close" id="sidebarClose" aria-label="Close sidebar">&times;</button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="{{ url_for('main.index') }}" class="sidebar-link {% if active_page == 'nueva' %}active{% endif %}">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>Nueva Solicitud</span>
+                </a>
+                <a href="{{ url_for('main.dashboard') }}" class="sidebar-link {% if active_page == 'dashboard' %}active{% endif %}">
+                    <i class="bi bi-bar-chart-fill"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('main.mis_solicitudes') }}" class="sidebar-link {% if active_page == 'mis_solicitudes' %}active{% endif %}">
+                    <i class="bi bi-list-check"></i>
+                    <span>Mis Solicitudes</span>
+                    <span class="sidebar-badge" id="sidebarSolicitudCount" style="display:none;"></span>
+                </a>
+                <a href="{{ url_for('main.catalogo_sku') }}" class="sidebar-link {% if active_page == 'catalogo' %}active{% endif %}">
+                    <i class="bi bi-box-seam"></i>
+                    <span>Cat&aacute;logo SKU</span>
+                </a>
+                <div style="border-top:1px solid rgba(255,255,255,0.1);margin:0.5rem 1.25rem;"></div>
+                <a href="{{ url_for('main.admin_login') }}" class="sidebar-link {% if active_page == 'admin' %}active{% endif %}" style="opacity:0.6;font-size:0.82rem;">
+                    <i class="bi bi-shield-lock"></i>
+                    <span>Admin</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="sidebar-user">
+                    <div class="sidebar-user-avatar" id="sidebarUserAvatar">{{ (session.get('identidad', 'US')[:2]).upper() }}</div>
+                    <div class="sidebar-user-info">
+                        <span class="sidebar-user-name" id="sidebarUserName">{{ session.get('identidad', 'Sin usuario') }}</span>
+                        <span class="sidebar-user-email" style="cursor:pointer;" onclick="try{sessionStorage.removeItem('identity_confirmed')}catch(e){};abrirModalIdentidad()">
+                            <i class="bi bi-arrow-repeat me-1"></i>Cambiar usuario
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+        <main class="main-content">
+            {% block breadcrumb %}
+            <div class="breadcrumb-bar">
+                <a href="{{ url_for('main.index') }}">Inicio</a>
+                <span class="sep"><i class="bi bi-chevron-right"></i></span>
+                <span class="current">Nueva Solicitud</span>
+            </div>
+            {% endblock %}
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        {% set cat = category if category in ['success','error','warning','info','danger'] else 'info' %}
+                        {% if cat == 'danger' %}{% set cat = 'error' %}{% endif %}
+                        <div class="flash-msg flash-{{ cat }}">
+                            <i class="bi
+                                {% if cat == 'success' %}bi-check-circle-fill
+                                {% elif cat == 'error' %}bi-exclamation-circle-fill
+                                {% elif cat == 'warning' %}bi-exclamation-triangle-fill
+                                {% else %}bi-info-circle-fill{% endif %}"></i>
+                            <span>{{ message }}</span>
+                            <button class="close-btn" onclick="this.parentElement.remove()">&times;</button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <footer class="app-footer">
+        &copy; 2026 Sistema de Solicitudes de Compra
+    </footer>
+
+    <div id="toastContainer"></div>
+
+    <div class="modal fade modal-custom" id="modalIdentidad" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-person-circle me-2"></i>¿Qui&eacute;n eres?</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="identity-desc">
+                        Busca tu nombre o reg&iacute;strate si es tu primera vez
+                    </p>
+
+                    <div class="search-field">
+                        <div class="input-wrap">
+                            <input type="text" id="buscarIdentidad" class="form-input" placeholder="Escribe tu nombre..." autocomplete="off">
+                            <i class="bi bi-search"></i>
+                        </div>
+                        <div id="resultadosIdentidad"></div>
+                        <div id="pinIdentidadContainer" style="display:none;">
+                            <div class="pin-label">
+                                <i class="bi bi-key-fill"></i>Ingresa tu c&oacute;digo PIN de 4 d&iacute;gitos:
+                            </div>
+                            <div class="pin-row">
+                                <input type="text" id="pinIdentidad" class="form-input" placeholder="0000" maxlength="4" pattern="[0-9]*" inputmode="numeric" autocomplete="off"
+                                       style="width:110px;text-align:center;font-size:1.2rem;letter-spacing:0.3em;font-weight:700;">
+                                <button class="btn btn-primary btn-sm" id="btnConfirmarPinIdentidad">
+                                    <i class="bi bi-check-lg"></i> Ingresar
+                                </button>
+                                <button class="btn btn-ghost btn-sm" id="btnCancelarPinIdentidad">
+                                    <i class="bi bi-x-lg"></i> Cancelar
+                                </button>
+                            </div>
+                            <div id="errorPin" style="display:none;font-size:0.82rem;color:#dc3545;margin-top:0.4rem;"></div>
+                        </div>
+                    </div>
+
+                    <div id="identidadRegister" style="display:none;">
+                        <div class="register-label">
+                            <i class="bi bi-person-plus"></i>No encontramos tu nombre, reg&iacute;strate:
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="nombreRegistro" class="form-input" placeholder="Ej: Ronald Giron">
+                            <div class="register-hint">
+                                <i class="bi bi-info-circle"></i>Nombre y apellido obligatorio, primera letra may&uacute;scula
+                            </div>
+                            <div id="errorRegistro" style="display:none;font-size:0.82rem;color:#dc3545;margin-top:0.4rem;"></div>
+                            <div style="margin-top:0.5rem;">
+                                <input type="text" id="pinRegistro" class="form-input" placeholder="Crea un PIN de 4 d&iacute;gitos (para acceder desde otro PC)" maxlength="4" pattern="[0-9]*" inputmode="numeric" autocomplete="off"
+                                       style="text-align:center;font-size:1.1rem;letter-spacing:0.3em;font-weight:700;">
+                                <div class="register-hint">
+                                    <i class="bi bi-info-circle"></i>Necesitar&aacute;s este c&oacute;digo si usas tu nombre desde otro equipo
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-primary btn-sm mt-2" id="btnRegistrarIdentidad" style="width:100%;">
+                            <i class="bi bi-check-lg"></i> Registrarme
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmar Salir (cambios sin guardar) -->
+    <div class="modal fade modal-custom" id="modalConfirmarSalir" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content" style="border-top:5px solid var(--warning);">
+                <div class="modal-body" style="text-align:center;padding:2rem 1.5rem 1rem;">
+                    <div style="font-size:3rem;color:var(--warning);margin-bottom:1rem;">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                    <h5 style="font-weight:700;margin-bottom:0.75rem;color:var(--text-primary);">Cambios sin guardar</h5>
+                    <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:0.25rem;">
+                        Tienes cambios sin guardar en el formulario.
+                    </p>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);">
+                        Si sales ahora, perderás todo lo que has escrito.
+                    </p>
+                </div>
+                <div class="modal-footer" style="justify-content:center;border:none;padding-top:0;padding-bottom:1.25rem;">
+                    <button class="btn btn-outline" data-bs-dismiss="modal">
+                        <i class="bi bi-x-lg"></i> Cancelar
+                    </button>
+                    <button class="btn btn-primary" id="btnSalirSinGuardar" data-bs-dismiss="modal" style="background:var(--danger);border-color:var(--danger);">
+                        <i class="bi bi-box-arrow-right"></i> Salir sin guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Visor PDF -->
+    <div class="modal fade modal-custom" id="modalVisorPDF" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-xl" style="max-width:95vw;height:90vh;">
+            <div class="modal-content" style="height:100%;">
+                <div class="modal-header" style="flex-shrink:0;">
+                    <h5 class="modal-title"><i class="bi bi-filetype-pdf me-2" style="color:#dc2626;"></i>Visualizar PDF</h5>
+                    <div style="display:flex;gap:0.5rem;">
+                        <a class="btn btn-sm btn-primary" id="btnDescargarPDFModal" style="font-size:0.82rem;">
+                            <i class="bi bi-download me-1"></i>Descargar
+                        </a>
+                        <button class="btn btn-sm btn-ghost" data-bs-dismiss="modal" style="font-size:0.82rem;">
+                            <i class="bi bi-x-lg"></i> Cerrar
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-body" style="padding:0;overflow:hidden;flex:1;">
+                    <iframe id="pdfViewerFrame" src="" style="width:100%;height:100%;border:none;" title="Visor PDF"></iframe>
+                    <div id="pdfViewerLoading" style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-secondary);">
+                        <div style="text-align:center;">
+                            <div class="spinner-border mb-3" role="status" style="width:3rem;height:3rem;"></div>
+                            <div>Cargando PDF...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ static_url('js/main.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
