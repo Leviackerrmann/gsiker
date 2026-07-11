@@ -16,12 +16,9 @@ export default function BodegasPage() {
   const toast = useToast();
 
   const load = async () => {
-    const [bRes, sRes] = await Promise.all([
-      api.get("/inventario/bodegas"),
-      api.get("/inventario/stock?limit=1000"),
-    ]);
+    const bRes = await api.get("/inventario/bodegas");
     setBodegas(bRes.data);
-    setStockData(sRes.data);
+    api.get("/inventario/stock?limit=500").then(sRes => setStockData(sRes.data)).catch(() => {});
     setLoading(false);
   };
 

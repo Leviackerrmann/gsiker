@@ -46,6 +46,11 @@
   --cat-acc: rgba(245,158,11,0.12); --cat-acc-t: #F59E0B;
   --cat-ser: rgba(236,72,153,0.12); --cat-ser-t: #EC4899;
   --cat-otro: rgba(148,163,184,0.12); --cat-otro-t: #94A3B8;
+  --stock-ok: #10B981; --stock-warn: #F59E0B; --stock-low: #F43F5E;
+  --stock-ok-bg: rgba(16,185,129,0.1); --stock-warn-bg: rgba(245,158,11,0.1); --stock-low-bg: rgba(244,63,94,0.1);
+  --bod-c-bg: rgba(20,184,166,0.08); --bod-c-t: #14B8A6;
+  --bod-n-bg: rgba(14,165,233,0.08); --bod-n-t: #0EA5E9;
+  --bod-s-bg: rgba(245,158,11,0.08); --bod-s-t: #F59E0B;
   --primary: #14B8A6;
   --primary-hover: #0D9488;
   --primary-light: rgba(20,184,166,0.12);
@@ -116,6 +121,11 @@ body.light {
   --cat-acc: rgba(236,72,153,0.1); --cat-acc-t: #DB2777;
   --cat-ser: rgba(245,158,11,0.1); --cat-ser-t: #D97706;
   --cat-otro: rgba(100,116,139,0.1); --cat-otro-t: #64748B;
+  --stock-ok: #16A34A; --stock-warn: #D97706; --stock-low: #DC2626;
+  --stock-ok-bg: rgba(22,163,74,0.08); --stock-warn-bg: rgba(217,119,6,0.08); --stock-low-bg: rgba(220,38,38,0.08);
+  --bod-c-bg: rgba(99,102,241,0.08); --bod-c-t: #6366F1;
+  --bod-n-bg: rgba(14,165,233,0.08); --bod-n-t: #0284C7;
+  --bod-s-bg: rgba(245,158,11,0.08); --bod-s-t: #D97706;
   --primary: #6366F1;
   --primary-hover: #4F46E5;
   --primary-light: rgba(99,102,241,0.1);
@@ -123,7 +133,7 @@ body.light {
   --warning: #EC4899; --warning-bg: rgba(236,72,153,0.1); --warning-text: #BE185D;
   --danger: #EF4444; --danger-bg: rgba(239,68,68,0.1); --danger-text: #B91C1C;
   --info: #0EA5E9; --info-bg: rgba(14,165,233,0.1);
-  --surface: rgba(255,255,255,0.62);
+  --surface: #FFFFFF;
   --sidebar: rgba(255,255,255,0.72);
   --sidebar-hover: rgba(99,102,241,0.04);
   --sidebar-active: rgba(99,102,241,0.08);
@@ -172,3 +182,8 @@ table { border-collapse: collapse; }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration: 0.01ms!important; transition-duration: 0.01ms!important; } }
 
 .sidebar-nav::-webkit-scrollbar { display: none; }
+
+.sidebar-nav a:hover, .sidebar-nav button:hover {
+  background: rgba(128,128,128,0.08) !important;
+  color: var(--text-primary) !important;
+}
