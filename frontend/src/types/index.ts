@@ -13,6 +13,9 @@ export interface Bodega {
   nombre: string;
   ubicacion: string | null;
   activa: boolean;
+  capacidad: number | null;
+  encargado: string | null;
+  notas: string | null;
   created_at: string;
 }
 

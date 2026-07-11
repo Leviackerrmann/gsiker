@@ -54,6 +54,9 @@ class Bodega(Base):
     nombre: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
     ubicacion: Mapped[str] = mapped_column(String(255), nullable=True)
     activa: Mapped[bool] = mapped_column(default=True, nullable=False)
+    capacidad: Mapped[float] = mapped_column(Float, nullable=True)
+    encargado: Mapped[str] = mapped_column(String(200), nullable=True)
+    notas: Mapped[str] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     stocks: Mapped[list["Stock"]] = relationship(back_populates="bodega", cascade="all, delete-orphan")

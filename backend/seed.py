@@ -63,9 +63,9 @@ async def seed():
         # ═══════════════════════════════════════════════════════════
         # BODEGAS + UBICACIONES
         # ═══════════════════════════════════════════════════════════
-        b1 = Bodega(nombre="Bodega Central", ubicacion="Av. Principal #100")
-        b2 = Bodega(nombre="Bodega Materia Prima", ubicacion="Zona Industrial")
-        b3 = Bodega(nombre="Bodega Producto Terminado", ubicacion="Centro de Distribución")
+        b1 = Bodega(nombre="Bodega Central", ubicacion="Av. Principal #100", capacidad=25000, encargado="Carlos Muñoz")
+        b2 = Bodega(nombre="Bodega Materia Prima", ubicacion="Zona Industrial", capacidad=20000, encargado="María López")
+        b3 = Bodega(nombre="Bodega Producto Terminado", ubicacion="Centro de Distribución", capacidad=15000, encargado="Pedro Soto")
         db.add_all([b1, b2, b3])
         await db.flush()
 

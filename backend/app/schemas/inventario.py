@@ -6,18 +6,27 @@ from pydantic import BaseModel
 class BodegaCreate(BaseModel):
     nombre: str
     ubicacion: str | None = None
+    capacidad: float | None = None
+    encargado: str | None = None
+    notas: str | None = None
 
 
 class BodegaUpdate(BaseModel):
     nombre: str | None = None
     ubicacion: str | None = None
     activa: bool | None = None
+    capacidad: float | None = None
+    encargado: str | None = None
+    notas: str | None = None
 
 
 class BodegaResponse(BaseModel):
     id: int
     nombre: str
     ubicacion: str | None
+    capacidad: float | None = None
+    encargado: str | None = None
+    notas: str | None = None
     activa: bool
     created_at: datetime
 
