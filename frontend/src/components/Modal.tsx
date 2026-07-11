@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface ModalProps {
   isOpen: boolean;
@@ -13,15 +14,20 @@ interface ModalProps {
 export default function Modal({ isOpen, title, subtitle, icon, children, onClose, maxWidth = 560 }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
       const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
       document.addEventListener("keydown", handler);
-      return () => document.removeEventListener("keydown", handler);
+      return () => {
+        document.body.style.overflow = prev;
+        document.removeEventListener("keydown", handler);
+      };
     }
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div style={overlay} onClick={onClose}>
       <div style={{ ...modalCard, maxWidth }} onClick={(e) => e.stopPropagation()}>
         <div style={glowDeco} />
@@ -45,7 +51,8 @@ export default function Modal({ isOpen, title, subtitle, icon, children, onClose
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
