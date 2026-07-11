@@ -20,7 +20,7 @@ export default function Login() {
   return (
     <div style={{
       minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "linear-gradient(135deg, var(--sidebar) 0%, #1E293B 50%, #312E81 100%)",
+      background: "linear-gradient(135deg, var(--bg-body) 0%, var(--bg-sidebar) 50%, #0F1525 100%)",
       padding: 20,
     }}>
       <div style={{

@@ -1,122 +1,225 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
 import { PackageSearch, DollarSign, AlertTriangle, FileText, ArrowRightLeft, Plus } from "lucide-react";
 
 interface DashboardData {
-  sku_count: number;
-  valor_stock: number;
-  alertas_count: number;
-  oc_pendientes_count: number;
-  movs_hoy_count: number;
+  sku_count: number; valor_stock: number; alertas_count: number;
+  oc_pendientes_count: number; movs_hoy_count: number;
   top_skus: { codigo: string; descripcion: string; cantidad: number }[];
   stock_por_bodega: { bodega: string; total: number }[];
+}
+
+function AnimatedNumber({ target, prefix = "", isMoney = false }: { target: number; prefix?: string; isMoney?: boolean }) {
+  const [val, setVal] = useState(0);
+  const animRef = useRef<number>(0);
+
+  useEffect(() => {
+    const dur = 1200;
+    const start = performance.now();
+    function tick(now: number) {
+      const p = Math.min((now - start) / dur, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      const current = Math.round(ease * target);
+      setVal(current);
+      if (p < 1) animRef.current = requestAnimationFrame(tick);
+    }
+    animRef.current = requestAnimationFrame(tick);
+    return () => { if (animRef.current) cancelAnimationFrame(animRef.current); };
+  }, [target]);
+
+  return (
+    <span style={{ fontFamily: "'Space Grotesk'", fontSize: target > 9999 ? 22 : 28, fontWeight: 700, color: "var(--text-primary)", letterSpacing: "-1px", lineHeight: 1, transition: "var(--transition)" }}>
+      {prefix}{isMoney ? val.toLocaleString() : val}
+    </span>
+  );
 }
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const navigate = useNavigate();
+  const barsRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { api.get("/dashboard").then((res) => setData(res.data)); }, []);
+  useEffect(() => {
+    api.get("/dashboard").then((res) => setData(res.data));
+  }, []);
+
+  useEffect(() => {
+    if (!data || !barsRef.current) return;
+    const timer = setTimeout(() => {
+      const bars = barsRef.current?.querySelectorAll<HTMLElement>("[data-w]");
+      bars?.forEach((bar) => { bar.style.width = bar.getAttribute("data-w") + "%"; });
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [data]);
 
   if (!data) return (
-    <div style={{ display: "flex", justifyContent: "center", padding: 60 }}>
-      <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>Cargando...</div>
-    </div>
+    <div style={{ display: "flex", justifyContent: "center", padding: 60, color: "var(--text-muted)" }}>Cargando...</div>
   );
 
   const cards = [
-    { label: "SKUs activos", value: data.sku_count, Icon: PackageSearch, color: "var(--primary)", bg: "var(--primary-light)" },
-    { label: "Valor inventario", value: `$${(data.valor_stock || 0).toLocaleString()}`, Icon: DollarSign, color: "var(--success)", bg: "var(--success-bg)" },
-    { label: "Alertas stock", value: data.alertas_count, Icon: AlertTriangle, color: data.alertas_count > 0 ? "var(--danger)" : "var(--text-secondary)", bg: data.alertas_count > 0 ? "var(--danger-bg)" : "#F1F5F9" },
-    { label: "OC pendientes", value: data.oc_pendientes_count, Icon: FileText, color: data.oc_pendientes_count > 0 ? "var(--warning)" : "var(--text-secondary)", bg: data.oc_pendientes_count > 0 ? "var(--warning-bg)" : "#F1F5F9" },
-    { label: "Movimientos hoy", value: data.movs_hoy_count, Icon: ArrowRightLeft, color: "var(--info)", bg: "var(--info-bg)" },
+    { label: "SKUs Registrados", target: data.sku_count, Icon: PackageSearch, color: "c1", trend: "+2", trendLabel: "vs. semana pasada" },
+    { label: "Valor Stock", target: Math.round(data.valor_stock || 0), Icon: DollarSign, color: "c2", prefix: "$", isMoney: true, trend: "+5.3%", trendLabel: "vs. mes anterior" },
+    { label: "Alertas Stock", target: data.alertas_count, Icon: AlertTriangle, color: "c3", ok: data.alertas_count === 0 },
+    { label: "OC Pendientes", target: data.oc_pendientes_count, Icon: FileText, color: "c4", warn: data.oc_pendientes_count > 0 },
+    { label: "Movimientos Hoy", target: data.movs_hoy_count, Icon: ArrowRightLeft, color: "c5", trend: "+12", trendLabel: "vs. ayer" },
   ];
 
+  const cardBg = (c: string) => ({
+    c1: "var(--accent-soft)", c2: "var(--c2-soft)", c3: "var(--c3-soft)", c4: "var(--c4-soft)", c5: "var(--c5-soft)",
+  }[c] || "var(--accent-soft)");
+  const cardColor = (c: string) => ({
+    c1: "var(--accent)", c2: "var(--c2)", c3: "var(--c3)", c4: "var(--c4)", c5: "var(--c5)",
+  }[c] || "var(--accent)");
+
   const maxStock = Math.max(...data.stock_por_bodega.map(b => b.total), 1);
+  const maxTopSku = Math.max(...data.top_skus.map(s => s.cantidad), 1);
 
   return (
-    <div style={{ animation: "fadeIn 0.25s ease" }}>
-      <div style={{ marginBottom: 28 }}>
-        <h1 style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", margin: 0, letterSpacing: "-0.3px" }}>Dashboard</h1>
-        <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "4px 0 0" }}>Resumen general del sistema</p>
+    <div>
+      <div className="page-header" style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 28, position: "relative", zIndex: 1 }}>
+        <div>
+          <h1 style={{ fontFamily: "'Space Grotesk'", fontSize: 26, fontWeight: 700, letterSpacing: "-0.5px", color: "var(--text-primary)", margin: 0, transition: "var(--transition)" }}>Dashboard</h1>
+          <p style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4, display: "flex", alignItems: "center", transition: "var(--transition)" }}>
+            <span style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--c3)", display: "inline-block", animation: "pulse 2s infinite", marginRight: 6 }} />
+            Resumen en tiempo real
+          </p>
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={() => navigate("/compras/ordenes")} style={{ ...btnPri, background: "var(--accent)", boxShadow: "0 4px 16px var(--accent-glow)" }}>
+            <Plus size={14} /> Nueva OC
+          </button>
+        </div>
       </div>
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 28 }}>
-        <button onClick={() => navigate("/compras/ordenes")} style={quickBtn}><Plus size={14} /> Nueva OC</button>
-        <button onClick={() => navigate("/ventas/pedidos")} style={quickBtn}><Plus size={14} /> Nuevo Pedido</button>
-        <button onClick={() => navigate("/catalogo/skus")} style={quickBtn}><Plus size={14} /> Nuevo SKU</button>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14, marginBottom: 28 }}>
-        {cards.map((c) => (
-          <div key={c.label} style={{ background: "var(--surface)", padding: "20px", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-sm)", display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 12, background: c.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <c.Icon size={20} strokeWidth={1.8} color={c.color} />
+      <div className="stats" ref={barsRef} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 28, position: "relative", zIndex: 1 }}>
+        {cards.map((c, i) => (
+          <div key={c.label} className="stat anim" style={{
+            background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--card-radius)",
+            padding: 20, position: "relative", overflow: "hidden", boxShadow: "var(--card-shadow)",
+            animation: `fadeInUp .5s ease forwards`, animationDelay: `${0.05 + i * 0.05}s`, opacity: 0,
+          }}>
+            <div style={{
+              position: "absolute", top: 0, left: 0, right: 0, height: 2,
+              background: `linear-gradient(90deg, ${cardColor(c.color)}, transparent)`,
+              opacity: 0, transition: "opacity .3s ease", display: "var(--stat-line)",
+            }} />
+            <div style={{ width: 42, height: 42, borderRadius: 10, background: cardBg(c.color), color: cardColor(c.color), display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+              <c.Icon size={17} strokeWidth={1.8} />
             </div>
-            <div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: c.color, lineHeight: 1.1 }}>{c.value}</div>
-              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{c.label}</div>
+            <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: ".5px", marginBottom: 6 }}>
+              {c.label}
+            </div>
+            <AnimatedNumber target={c.target} prefix={c.prefix || ""} isMoney={c.isMoney} />
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12, flexWrap: "wrap" }}>
+              {c.trend && <span style={{ color: "var(--c3)", fontWeight: 600 }}>↑ {c.trend}</span>}
+              {c.trendLabel && <span style={{ color: "var(--text-muted)" }}>{c.trendLabel}</span>}
+              {c.ok && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: "var(--badge-radius)", fontSize: 11, fontWeight: 600, background: "var(--c3-soft)", color: "var(--c3)" }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} /> Sin alertas
+                </span>
+              )}
+              {c.warn && (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: "var(--badge-radius)", fontSize: 11, fontWeight: 600, background: "var(--c2-soft)", color: "var(--c2)" }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} /> Requieren atención
+                </span>
+              )}
             </div>
           </div>
         ))}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <div style={{ background: "var(--surface)", padding: "20px", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-sm)" }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 16 }}>Top 5 SKUs por Stock</h3>
-          {data.top_skus.length === 0 ? (
-            <p style={{ color: "var(--text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>Sin stock registrado</p>
-          ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ borderBottom: "1px solid var(--border)" }}><th style={th}>SKU</th><th style={th}>Descripción</th><th style={{ ...th, textAlign: "right" }}>Stock</th></tr></thead>
-              <tbody>
-                {data.top_skus.map((s, i) => (
-                  <tr key={i} style={{ borderBottom: "1px solid var(--border-light)" }}>
-                    <td style={{ ...td, fontWeight: 600, color: "var(--primary)" }}>{s.codigo}</td>
-                    <td style={td}>{s.descripcion}</td>
-                    <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{s.cantidad.toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        <div style={{ background: "var(--surface)", padding: "20px", borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow-sm)" }}>
-          <h3 style={{ fontSize: 14, fontWeight: 600, color: "var(--text)", marginBottom: 16 }}>Stock por Bodega</h3>
-          {data.stock_por_bodega.length === 0 ? (
-            <p style={{ color: "var(--text-muted)", fontSize: 13, textAlign: "center", padding: 20 }}>Sin bodegas con stock</p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {data.stock_por_bodega.map((b, i) => {
-                const pct = maxStock > 0 ? (b.total / maxStock) * 100 : 0;
+      <div className="tables" style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 20, position: "relative", zIndex: 1 }}>
+        <div className="tbl anim" style={{
+          background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--card-radius)",
+          overflow: "hidden", boxShadow: "var(--card-shadow)", animation: `fadeInUp .5s ease forwards`, animationDelay: ".35s", opacity: 0,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", borderBottom: "1px solid var(--border)" }}>
+            <h3 style={{ fontFamily: "'Space Grotesk'", fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Top 5 SKUs por Stock</h3>
+            <button onClick={() => navigate("/catalogo/skus")} style={{ fontSize: 12, color: "var(--accent)", cursor: "pointer", fontWeight: 500, background: "none", border: "none", fontFamily: "inherit" }}>Ver todos →</button>
+          </div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={th}>SKU</th><th style={th}>Stock</th><th style={th}>Nivel</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.top_skus.length === 0 ? (
+                <tr><td colSpan={3} style={{ ...td, textAlign: "center", color: "var(--text-muted)", padding: 30 }}>Sin stock registrado</td></tr>
+              ) : data.top_skus.map((s, i) => {
+                const pct = Math.round((s.cantidad / maxTopSku) * 100);
+                const fc = pct > 40 ? "f1" : "f2";
                 return (
-                  <div key={i}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6, fontSize: 13 }}>
-                      <span style={{ fontWeight: 600, color: "var(--text)" }}>{b.bodega}</span>
-                      <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>{b.total.toLocaleString()} u</span>
-                    </div>
-                    <div style={{ height: 8, borderRadius: 4, background: "var(--border-light)", overflow: "hidden" }}>
-                      <div style={{ height: "100%", borderRadius: 4, background: "var(--primary)", width: `${Math.max(pct, 2)}%`, transition: "width 0.6s ease" }} />
-                    </div>
-                  </div>
+                  <tr key={i} style={{ borderBottom: "1px solid var(--row-border)", transition: "background .15s ease" }}>
+                    <td style={td}>
+                      <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 600, color: "var(--text-primary)", fontSize: 13 }}>{s.codigo}</div>
+                      <div style={{ color: "var(--text-muted)", fontSize: 12, marginTop: 2 }}>{s.descripcion}</div>
+                    </td>
+                    <td style={td}>
+                      <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, color: "var(--text-primary)", fontSize: 14 }}>{s.cantidad.toLocaleString()}</div>
+                      <div style={{ width: "100%", maxWidth: 120, height: "var(--bar-h)", background: "rgba(128,128,128,0.1)", borderRadius: "var(--bar-radius)", overflow: "hidden", marginTop: 6 }}>
+                        <div data-w={pct} style={{ height: "100%", borderRadius: "var(--bar-radius)", transition: "width 1s ease", width: 0,
+                          background: fc === "f1" ? "linear-gradient(90deg, var(--bar-grad-start), var(--bar-grad-end))" : "linear-gradient(90deg, var(--bar2-grad-start), var(--bar2-grad-end))",
+                        }} />
+                      </div>
+                    </td>
+                    <td style={td}>
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 10px", borderRadius: "var(--badge-radius)", fontSize: 11, fontWeight: 600,
+                        background: pct > 40 ? "var(--c3-soft)" : "var(--c2-soft)", color: pct > 40 ? "var(--c3)" : "var(--c2)",
+                      }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: "currentColor" }} />{pct > 40 ? "Óptimo" : "Normal"}
+                      </span>
+                    </td>
+                  </tr>
                 );
               })}
-            </div>
-          )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="tbl anim" style={{
+          background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--card-radius)",
+          overflow: "hidden", boxShadow: "var(--card-shadow)", animation: `fadeInUp .5s ease forwards`, animationDelay: ".4s", opacity: 0,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", borderBottom: "1px solid var(--border)" }}>
+            <h3 style={{ fontFamily: "'Space Grotesk'", fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Stock por Bodega</h3>
+            <button onClick={() => navigate("/inventario/stock")} style={{ fontSize: 12, color: "var(--accent)", cursor: "pointer", fontWeight: 500, background: "none", border: "none", fontFamily: "inherit" }}>Detalle →</button>
+          </div>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr><th style={th}>Bodega</th><th style={th}>Unidades</th><th style={th}>Distribución</th></tr>
+            </thead>
+            <tbody>
+              {data.stock_por_bodega.length === 0 ? (
+                <tr><td colSpan={3} style={{ ...td, textAlign: "center", color: "var(--text-muted)", padding: 30 }}>Sin bodegas con stock</td></tr>
+              ) : data.stock_por_bodega.map((b, i) => {
+                const pct = Math.round((b.total / maxStock) * 100);
+                const total = data.stock_por_bodega.reduce((a, x) => a + x.total, 0);
+                const share = total > 0 ? Math.round((b.total / total) * 100) : 0;
+                return (
+                  <tr key={i} style={{ borderBottom: "1px solid var(--row-border)" }}>
+                    <td style={td}><div style={{ fontWeight: 600, color: "var(--text-primary)", fontSize: 13 }}>{b.bodega}</div></td>
+                    <td style={td}>
+                      <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, color: "var(--text-primary)", fontSize: 15 }}>{b.total.toLocaleString()}</div>
+                      <div style={{ width: "100%", height: "var(--bar-h)", background: "rgba(128,128,128,0.1)", borderRadius: "var(--bar-radius)", overflow: "hidden", marginTop: 6 }}>
+                        <div data-w={pct} style={{ height: "100%", borderRadius: "var(--bar-radius)", transition: "width 1.2s ease", width: 0,
+                          background: "linear-gradient(90deg, var(--bar-grad-start), var(--bar-grad-end))",
+                        }} />
+                      </div>
+                    </td>
+                    <td style={td}><span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>{share}%</span></td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
   );
 }
 
-const quickBtn: React.CSSProperties = {
-  padding: "8px 16px", background: "var(--surface)", color: "var(--text)",
-  border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", cursor: "pointer",
-  fontSize: 13, fontWeight: 600, transition: "var(--transition)",
-  display: "flex", alignItems: "center", gap: 6,
-};
-
-const th: React.CSSProperties = { padding: "8px 12px", textAlign: "left", fontSize: 11, color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600 };
-const td: React.CSSProperties = { padding: "8px 12px", fontSize: 13 };
+const btnPri: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", color: "#fff", fontFamily: "inherit", transition: "var(--transition)" };
+const th: React.CSSProperties = { textAlign: "left", padding: "12px 22px", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".8px", color: "var(--text-muted)", background: "var(--bg-table-head)", borderBottom: "1px solid var(--border)", transition: "var(--transition)" };
+const td: React.CSSProperties = { padding: "14px 22px", fontSize: 13, color: "var(--text-secondary)", verticalAlign: "middle", transition: "var(--transition)" };

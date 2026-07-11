@@ -5,14 +5,14 @@ import {
   LayoutDashboard, Package, Warehouse, ClipboardList, ArrowRightLeft,
   PenLine, BookOpen, AlertTriangle, Lock, Tag, MapPin, BarChart3,
   ShoppingCart, Building2, FileText, Receipt, Users, Settings, LogOut,
-  ChevronDown,
+  ChevronDown, Boxes,
 } from "lucide-react";
 
 interface NavItem { to: string; label: string; icon: React.ReactNode; }
 interface Section { label: string; icon: React.ReactNode; items: NavItem[]; }
 
-const iconSize = 17;
-const iconProps = { size: iconSize, strokeWidth: 1.8 };
+const iconSize = 16;
+const iconProps = { size: iconSize, strokeWidth: 1.6 };
 
 const sections: Section[] = [
   { label: "Inventario", icon: <Package {...iconProps} />, items: [
@@ -50,6 +50,13 @@ const singleItems: NavItem[] = [
   { to: "/catalogo/skus", label: "Catálogo SKU", icon: <Tag {...iconProps} /> },
 ];
 
+const sectionLabels: Record<string, string> = {
+  "Inventario": "Inventario",
+  "Compras": "Compras",
+  "Ventas": "Ventas",
+  "Administración": "Sistema",
+};
+
 export default function Sidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -65,68 +72,101 @@ export default function Sidebar() {
   const toggleSection = (label: string) => setExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
   const isItemActive = (to: string) => location.pathname.startsWith(to);
 
+  const sectionDisplay = sections.filter(s => s.label !== "Administración" || isAdmin);
+
   return (
-    <aside style={{ width: 248, background: "var(--sidebar)", color: "#CBD5E1", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-      <div style={{ padding: "20px 20px 16px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 32, height: 32, borderRadius: "var(--radius-sm)", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: 15 }}>M</div>
-          <div>
-            <div style={{ color: "#F1F5F9", fontWeight: 700, fontSize: 16, letterSpacing: "-0.3px" }}>minisap</div>
-            <div style={{ color: "#64748B", fontSize: 11, fontWeight: 500 }}>ERP v1.0</div>
-          </div>
+    <aside style={{
+      width: 260, minHeight: "100vh", background: "var(--bg-sidebar)",
+      borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column",
+      position: "fixed", left: 0, top: 0, bottom: 0, zIndex: 50, overflow: "hidden",
+      transition: "var(--transition)",
+      backdropFilter: "var(--sidebar-blur)", WebkitBackdropFilter: "var(--sidebar-blur)",
+    }}>
+      <div style={{
+        padding: "24px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12,
+        transition: "border-color .5s ease",
+      }}>
+        <div style={{
+          width: 40, height: 40, borderRadius: 10,
+          background: "linear-gradient(135deg, var(--accent-grad-start), var(--accent-grad-end))",
+          display: "flex", alignItems: "center", justifyContent: "center", color: "#fff",
+          boxShadow: "0 4px 16px var(--accent-glow)", transition: "all .5s ease",
+        }}>
+          <Boxes size={18} strokeWidth={2} />
+        </div>
+        <div>
+          <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 16, color: "var(--text-primary)", letterSpacing: "-0.3px", transition: "var(--transition)" }}>minisap</div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 400, transition: "var(--transition)" }}>ERP v1.0</div>
         </div>
       </div>
 
-      <nav style={{ flex: 1, padding: "4px 12px", overflow: "auto" }}>
+      <nav style={{ flex: 1, padding: "16px 12px", display: "flex", flexDirection: "column", gap: 2, overflowY: "auto" }}>
+        <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.2px", color: "var(--text-muted)", padding: "8px 12px", transition: "var(--transition)" }}>
+          Principal
+        </div>
         {singleItems.map((item) => {
           const active = isItemActive(item.to);
           return (
             <NavLink key={item.to} to={item.to} style={{
-              display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", marginBottom: 2,
-              borderRadius: "var(--radius-sm)", color: active ? "#F1F5F9" : "#94A3B8",
-              background: active ? "var(--sidebar-active)" : "transparent",
-              textDecoration: "none", fontSize: 13, fontWeight: active ? 600 : 400,
-              transition: "var(--transition)",
+              display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 8,
+              color: active ? "var(--accent)" : "var(--text-secondary)", fontSize: 14, fontWeight: 500,
+              background: active ? "var(--accent-soft)" : "transparent",
+              cursor: "pointer", transition: "all .2s ease", position: "relative", textDecoration: "none",
             }}>
-              <span style={{ display: "flex", alignItems: "center", width: 22, justifyContent: "center", flexShrink: 0, opacity: active ? 1 : 0.7 }}>{item.icon}</span>
+              {active && <div style={{
+                position: "absolute", left: -12, top: "50%", transform: "translateY(-50%)",
+                width: 3, height: 24, borderRadius: "0 4px 4px 0", background: "var(--accent)",
+              }} />}
+              <span style={{ width: 22, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: active ? 1 : 0.6 }}>
+                {item.icon}
+              </span>
               {item.label}
             </NavLink>
           );
         })}
 
-        <div style={{ margin: "8px 0", borderTop: "1px solid rgba(255,255,255,0.06)" }} />
-
-        {sections.filter(s => s.label !== "Administración" || isAdmin).map((section) => {
+        {sectionDisplay.map((section) => {
           const isExpanded = expanded[section.label];
           const hasActiveChild = section.items.some((i) => isItemActive(i.to));
 
           return (
             <div key={section.label}>
+              {section.label !== singleItems[0]?.label && (
+                <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.2px", color: "var(--text-muted)", padding: "16px 12px 8px", transition: "var(--transition)" }}>
+                  {sectionLabels[section.label] || section.label}
+                </div>
+              )}
               <button onClick={() => toggleSection(section.label)} style={{
-                width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "9px 12px",
-                color: hasActiveChild ? "#F1F5F9" : "#94A3B8", background: "transparent",
-                border: "none", cursor: "pointer", fontSize: 13, fontWeight: hasActiveChild ? 600 : 400,
-                textAlign: "left", fontFamily: "inherit", borderRadius: "var(--radius-sm)",
-                transition: "var(--transition)", marginBottom: 2,
+                width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 8,
+                color: hasActiveChild ? "var(--accent)" : "var(--text-secondary)", fontSize: 14, fontWeight: 500,
+                background: hasActiveChild ? "var(--accent-soft)" : "transparent", border: "none",
+                cursor: "pointer", textAlign: "left", fontFamily: "inherit", transition: "all .2s ease", position: "relative",
               }}>
-                <span style={{ display: "flex", alignItems: "center", width: 22, justifyContent: "center", flexShrink: 0, opacity: hasActiveChild ? 1 : 0.7 }}>{section.icon}</span>
+                {hasActiveChild && <div style={{
+                  position: "absolute", left: -12, top: "50%", transform: "translateY(-50%)",
+                  width: 3, height: 24, borderRadius: "0 4px 4px 0", background: "var(--accent)",
+                }} />}
+                <span style={{ width: 22, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: hasActiveChild ? 1 : 0.6 }}>
+                  {section.icon}
+                </span>
                 <span style={{ flex: 1 }}>{section.label}</span>
                 <ChevronDown size={12} strokeWidth={2} style={{ opacity: 0.4, transition: "transform 0.2s", transform: isExpanded ? "rotate(0deg)" : "rotate(-90deg)" }} />
               </button>
-
               {isExpanded && (
                 <div style={{ paddingLeft: 8, marginBottom: 4 }}>
                   {section.items.map((item) => {
                     const active = isItemActive(item.to);
                     return (
                       <NavLink key={item.to} to={item.to} style={{
-                        display: "flex", alignItems: "center", gap: 10, padding: "7px 12px 7px 24px",
-                        borderRadius: "var(--radius-sm)", color: active ? "#F1F5F9" : "#94A3B8",
-                        background: active ? "var(--sidebar-active)" : "transparent",
-                        textDecoration: "none", fontSize: 13, fontWeight: active ? 600 : 400,
-                        transition: "var(--transition)", marginBottom: 1,
+                        display: "flex", alignItems: "center", gap: 12, padding: "8px 14px 8px 24px",
+                        borderRadius: 8, color: active ? "var(--accent)" : "var(--text-secondary)",
+                        fontSize: 13, fontWeight: active ? 600 : 400,
+                        background: active ? "var(--accent-soft)" : "transparent",
+                        cursor: "pointer", transition: "all .2s ease", position: "relative", textDecoration: "none",
                       }}>
-                        <span style={{ display: "flex", alignItems: "center", width: 22, justifyContent: "center", flexShrink: 0, opacity: active ? 1 : 0.7 }}>{item.icon}</span>
+                        <span style={{ width: 20, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: active ? 1 : 0.5 }}>
+                          {item.icon}
+                        </span>
                         {item.label}
                       </NavLink>
                     );
@@ -138,19 +178,26 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div style={{ padding: "12px 12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: "var(--radius-sm)", background: "var(--sidebar-hover)" }}>
-          <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--primary)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12, fontWeight: 600 }}>
-            {user?.nombre_completo?.[0]?.toUpperCase() || "U"}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: "#E2E8F0", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.nombre_completo}</div>
-            <div style={{ fontSize: 10, color: "#64748B", textTransform: "capitalize" }}>{user?.rol}</div>
-          </div>
-          <button onClick={() => { logout(); navigate("/login"); }} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer", fontSize: 13, padding: 4, borderRadius: 4, lineHeight: 1, display: "flex", alignItems: "center" }} title="Cerrar sesión">
-            <LogOut size={15} strokeWidth={1.8} />
-          </button>
+      <div style={{ padding: "16px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12, transition: "var(--transition)" }}>
+        <div style={{
+          width: 36, height: 36, borderRadius: 8,
+          background: "linear-gradient(135deg, var(--avatar-grad-start), var(--avatar-grad-end))",
+          display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, color: "#fff",
+          flexShrink: 0, transition: "all .5s ease",
+        }}>
+          {user?.nombre_completo?.[0]?.toUpperCase() || "U"}
         </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", transition: "var(--transition)" }}>
+            {user?.nombre_completo}
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "capitalize", transition: "var(--transition)" }}>
+            {user?.rol}
+          </div>
+        </div>
+        <button onClick={() => { logout(); navigate("/login"); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4, display: "flex" }} title="Cerrar sesión">
+          <LogOut size={15} strokeWidth={1.8} />
+        </button>
       </div>
     </aside>
   );
