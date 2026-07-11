@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Moon, Sun } from "lucide-react";
+
 
 export default function ThemeToggle() {
   const [isDark, setIsDark] = useState(true);
@@ -25,7 +25,7 @@ export default function ThemeToggle() {
       fontFamily: "inherit", color: "var(--text-secondary)", fontSize: 13, fontWeight: 500,
       transition: "var(--transition)",
     }}>
-      {isDark ? <Moon size={14} color="var(--accent)" /> : <Sun size={14} color="var(--accent)" />}
+      <i className={`fas ${isDark ? "fa-moon" : "fa-sun"}`} style={{ color: "var(--accent)", fontSize: 14, width: 16, textAlign: "center" }} />
       <span style={{ flex: 1, textAlign: "left" }}>{isDark ? "Modo Oscuro" : "Modo Claro"}</span>
       <div style={{
         width: 36, height: 20, borderRadius: 10, position: "relative",

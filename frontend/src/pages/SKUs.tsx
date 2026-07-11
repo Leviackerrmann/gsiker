@@ -3,7 +3,7 @@ import api from "../lib/api";
 import Modal from "../components/Modal";
 import Badge from "../components/Badge";
 import { useToast } from "../components/Toast";
-import { Search, Plus, Pen } from "lucide-react";
+
 import type { SKU } from "../types";
 
 export default function SKUsPage() {
@@ -78,14 +78,14 @@ export default function SKUsPage() {
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           <button onClick={openCreate} style={btnPri}>
-            <Plus size={14} /> Nuevo SKU
+            <i className="fas fa-plus" style={{ fontSize: 11 }} /> Nuevo SKU
           </button>
         </div>
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20, position: "relative", zIndex: 1, flexWrap: "wrap" }}>
         <div style={{ position: "relative", flex: 1, minWidth: 220, maxWidth: 360 }}>
-          <Search size={14} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+          <i className="fas fa-search" style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", fontSize: 13 }} />
           <input
             value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por código o descripción..." style={searchStyle}
@@ -134,7 +134,7 @@ export default function SKUsPage() {
                   <td style={{ ...td, textAlign: "right", fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>${((s.costo_unitario || 0) * (s.precio_referencia || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
                   <td style={td}>
                     <div className="row-actions" style={{ display: "flex", gap: 4, opacity: 0, transition: "opacity .2s" }}>
-                      <button onClick={() => openEdit(s)} style={rowBtn} title="Editar"><Pen size={12} /></button>
+                      <button onClick={() => openEdit(s)} style={rowBtn} title="Editar"><i className="fas fa-pen" style={{ fontSize: 10 }} /></button>
                     </div>
                   </td>
                 </tr>

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { LogIn, AlertCircle } from "lucide-react";
+
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -27,7 +27,7 @@ export default function Login() {
         width: "100%", maxWidth: 400, animation: "fadeIn 0.3s ease",
       }}>
         <div style={{ textAlign: "center", marginBottom: 32 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 14, background: "var(--primary)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 16 }}><LogIn size={28} strokeWidth={2.5} /></div>
+          <div style={{ width: 56, height: 56, borderRadius: 14, background: "var(--primary)", display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 800, color: "#fff", marginBottom: 16 }}><i className="fas fa-boxes-stacked" style={{ fontSize: 24 }} /></div>
           <h1 style={{ color: "#F1F5F9", fontSize: 26, fontWeight: 700, margin: 0, letterSpacing: "-0.5px" }}>minisap</h1>
           <p style={{ color: "#64748B", fontSize: 14, marginTop: 6 }}>ERP — Sistema de Gestión</p>
         </div>
@@ -41,7 +41,7 @@ export default function Login() {
               borderRadius: "var(--radius-sm)", marginBottom: 20, fontSize: 13, fontWeight: 500,
               display: "flex", alignItems: "center", gap: 8, animation: "fadeIn 0.2s ease",
             }}>
-              <AlertCircle size={16} /> {error}
+              <i className="fas fa-circle-exclamation" style={{ fontSize: 14 }} /> {error}
             </div>
           )}
 

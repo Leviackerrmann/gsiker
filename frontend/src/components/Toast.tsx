@@ -28,7 +28,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const bgMap = { success: "var(--success-bg)", error: "var(--danger-bg)", info: "var(--info-bg)" };
   const brdMap = { success: "var(--success)", error: "var(--danger)", info: "var(--info)" };
   const colorMap = { success: "var(--success-text)", error: "var(--danger-text)", info: "var(--info)" };
-  const iconMap = { success: "✓", error: "✕", info: "ℹ" };
+  const iconMap: Record<string, React.ReactNode> = {
+    success: <i className="fas fa-circle-check" />,
+    error: <i className="fas fa-circle-exclamation" />,
+    info: <i className="fas fa-circle-info" />,
+  };
 
   return (
     <ToastContext.Provider value={{ success: (m) => add(m, "success"), error: (m) => add(m, "error"), info: (m) => add(m, "info") }}>
