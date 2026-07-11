@@ -59,8 +59,9 @@ const overlay: React.CSSProperties = {
 const modalCard: React.CSSProperties = {
   position: "relative", zIndex: 1,
   background: "var(--m-bg)", border: "1px solid var(--m-border)", borderRadius: 16,
-  width: "100%", boxShadow: "0 32px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03) inset",
-  overflow: "hidden", maxHeight: "90vh",
+  width: "100%", maxHeight: "90vh",
+  boxShadow: "0 32px 100px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.03) inset",
+  display: "flex", flexDirection: "column",
   animation: "fadeIn 0.3s ease",
 };
 
@@ -101,5 +102,5 @@ const closeBtn: React.CSSProperties = {
 
 const modalBody: React.CSSProperties = {
   padding: "24px 28px 24px", position: "relative", zIndex: 1,
-  overflow: "auto", maxHeight: "calc(90vh - 90px)",
+  overflow: "auto", flex: 1,
 };
