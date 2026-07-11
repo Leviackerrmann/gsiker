@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ThemeToggle from "./ThemeToggle";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import {
@@ -177,6 +178,10 @@ export default function Sidebar() {
           );
         })}
       </nav>
+
+      <div style={{ padding: "0 12px", marginBottom: 4 }}>
+        <ThemeToggle />
+      </div>
 
       <div style={{ padding: "16px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12, transition: "var(--transition)" }}>
         <div style={{

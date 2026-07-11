@@ -1,6 +1,5 @@
 import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
-import ThemeToggle from "./ThemeToggle";
 import BackgroundGlows from "./BackgroundGlows";
 
 export default function Layout() {
@@ -9,7 +8,6 @@ export default function Layout() {
       <Sidebar />
       <main style={{ flex: 1, padding: "28px 32px", marginLeft: 248, position: "relative", background: "var(--bg-body)", overflow: "auto", minWidth: 0, transition: "var(--transition)" }}>
         <BackgroundGlows />
-        <ThemeToggle />
         <div style={{ position: "relative", zIndex: 1 }}>
           <Outlet />
         </div>

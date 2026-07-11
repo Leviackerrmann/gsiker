@@ -19,30 +19,25 @@ export default function ThemeToggle() {
 
   return (
     <button onClick={toggle} style={{
-      position: "fixed", top: 16, right: 24, zIndex: 500,
-      display: "flex", alignItems: "center", gap: 10,
-      padding: "6px 16px 6px 10px", borderRadius: 40, cursor: "pointer",
-      background: "var(--bg-card)", border: "1px solid var(--border)",
-      backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)",
-      boxShadow: "0 4px 20px rgba(0,0,0,0.15)", fontFamily: "inherit",
-      color: "var(--text-secondary)", fontSize: 13, fontWeight: 600,
-      transition: "var(--transition)", userSelect: "none",
+      width: "100%", display: "flex", alignItems: "center", gap: 10,
+      padding: "8px 12px", borderRadius: 8, cursor: "pointer",
+      background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)",
+      fontFamily: "inherit", color: "var(--text-secondary)", fontSize: 13, fontWeight: 500,
+      transition: "var(--transition)",
     }}>
       {isDark ? <Moon size={14} color="var(--accent)" /> : <Sun size={14} color="var(--accent)" />}
+      <span style={{ flex: 1, textAlign: "left" }}>{isDark ? "Modo Oscuro" : "Modo Claro"}</span>
       <div style={{
-        width: 44, height: 24, borderRadius: 12, position: "relative",
+        width: 36, height: 20, borderRadius: 10, position: "relative",
         background: "var(--toggle-track-bg)", transition: "background .4s ease",
       }}>
         <div style={{
-          position: "absolute", top: 2, left: isDark ? 2 : 22, width: 20, height: 20,
+          position: "absolute", top: 2, left: isDark ? 2 : 18, width: 16, height: 16,
           borderRadius: "50%", background: "var(--accent)",
-          transition: "left .4s cubic-bezier(.4,0,.2,1), background .4s ease",
-          boxShadow: "0 2px 10px var(--accent-glow)",
+          transition: "left .4s cubic-bezier(.4,0,.2,1)",
+          boxShadow: "0 1px 6px var(--accent-glow)",
         }} />
       </div>
-      <span style={{ fontSize: 11.5, color: "var(--text-muted)", letterSpacing: ".3px", minWidth: 36 }}>
-        {isDark ? "Dark" : "Light"}
-      </span>
     </button>
   );
 }
