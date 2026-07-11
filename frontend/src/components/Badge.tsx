@@ -1,5 +1,6 @@
 interface BadgeProps {
   color?: "success" | "warning" | "danger" | "info" | "neutral";
+  category?: "MP" | "PT" | "INS" | "ACC" | "SER" | "REP" | "SRV" | string;
   children: React.ReactNode;
 }
 
@@ -11,8 +12,18 @@ const colors: Record<string, { bg: string; color: string }> = {
   neutral: { bg: "#F1F5F9", color: "#475569" },
 };
 
-export default function Badge({ color = "neutral", children }: BadgeProps) {
-  const c = colors[color];
+const catColors: Record<string, { bg: string; color: string }> = {
+  MP:  { bg: "var(--cat-mp)",  color: "var(--cat-mp-t)" },
+  PT:  { bg: "var(--cat-pt)",  color: "var(--cat-pt-t)" },
+  INS: { bg: "var(--cat-ins)", color: "var(--cat-ins-t)" },
+  ACC: { bg: "var(--cat-acc)", color: "var(--cat-acc-t)" },
+  SER: { bg: "var(--cat-ser)", color: "var(--cat-ser-t)" },
+  SRV: { bg: "var(--cat-ser)", color: "var(--cat-ser-t)" },
+  REP: { bg: "var(--cat-otro)", color: "var(--cat-otro-t)" },
+};
+
+export default function Badge({ color = "neutral", category, children }: BadgeProps) {
+  const c = category ? (catColors[category] || catColors["MP"]) : colors[color];
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", padding: "3px 10px",

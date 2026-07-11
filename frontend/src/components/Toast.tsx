@@ -26,6 +26,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const bgMap = { success: "var(--success-bg)", error: "var(--danger-bg)", info: "var(--info-bg)" };
+  const brdMap = { success: "var(--success)", error: "var(--danger)", info: "var(--info)" };
   const colorMap = { success: "var(--success-text)", error: "var(--danger-text)", info: "var(--info)" };
   const iconMap = { success: "✓", error: "✕", info: "ℹ" };
 
@@ -38,7 +39,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             background: bgMap[t.type], color: colorMap[t.type], padding: "12px 18px",
             borderRadius: "var(--radius)", boxShadow: "var(--shadow-lg)", fontSize: 13, fontWeight: 600,
             display: "flex", alignItems: "center", gap: 10, animation: "toastIn 0.2s ease",
-            minWidth: 280,
+            minWidth: 280, border: `1px solid ${brdMap[t.type]}`,
           }}>
             <span style={{ fontSize: 16 }}>{iconMap[t.type]}</span>
             {t.message}
