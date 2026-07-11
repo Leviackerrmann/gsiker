@@ -51,6 +51,11 @@
   --bod-c-bg: rgba(20,184,166,0.08); --bod-c-t: #14B8A6;
   --bod-n-bg: rgba(14,165,233,0.08); --bod-n-t: #0EA5E9;
   --bod-s-bg: rgba(245,158,11,0.08); --bod-s-t: #F59E0B;
+  --m-bg: #111827; --m-border: #1E293B;
+  --m-head-bg: rgba(255,255,255,0.02); --m-input-bg: rgba(255,255,255,0.05);
+  --m-input-border: rgba(255,255,255,0.1); --m-input-focus: rgba(20,184,166,0.35);
+  --m-label: #64748B; --m-divider: rgba(255,255,255,0.06);
+  --m-foot-bg: rgba(255,255,255,0.015); --m-glow: rgba(20,184,166,0.06);
   --primary: #14B8A6;
   --primary-hover: #0D9488;
   --primary-light: rgba(20,184,166,0.12);
@@ -126,6 +131,11 @@ body.light {
   --bod-c-bg: rgba(99,102,241,0.08); --bod-c-t: #6366F1;
   --bod-n-bg: rgba(14,165,233,0.08); --bod-n-t: #0284C7;
   --bod-s-bg: rgba(245,158,11,0.08); --bod-s-t: #D97706;
+  --m-bg: #FFFFFF; --m-border: rgba(0,0,0,0.08);
+  --m-head-bg: rgba(0,0,0,0.015); --m-input-bg: rgba(0,0,0,0.03);
+  --m-input-border: rgba(0,0,0,0.12); --m-input-focus: rgba(99,102,241,0.3);
+  --m-label: #94A3B8; --m-divider: rgba(0,0,0,0.06);
+  --m-foot-bg: rgba(0,0,0,0.02); --m-glow: rgba(99,102,241,0.05);
   --primary: #6366F1;
   --primary-hover: #4F46E5;
   --primary-light: rgba(99,102,241,0.1);
