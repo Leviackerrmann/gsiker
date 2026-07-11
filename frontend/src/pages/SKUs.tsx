@@ -149,49 +149,70 @@ export default function SKUsPage() {
         table tbody tr:hover { background: var(--bg-table-row-hover); }
       `}</style>
 
-      <Modal isOpen={showModal} title={editing ? `Editar SKU: ${editing.codigo_sku}` : "Nuevo SKU"} onClose={() => setShowModal(false)} maxWidth={560}>
+      <Modal isOpen={showModal} title={editing ? `Editar SKU: ${editing.codigo_sku}` : "Nuevo SKU"} icon="fa-barcode" subtitle={editing ? `Modificando datos de ${editing.codigo_sku}` : "Completa los datos para registrar un nuevo producto"} onClose={() => setShowModal(false)} maxWidth={560}>
         <form onSubmit={handleSubmit}>
           {error && <div style={{ background: "var(--danger-bg)", color: "var(--danger)", padding: "8px 12px", borderRadius: "var(--radius-sm)", marginBottom: 14, fontSize: 13 }}>{error}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div>
-              <label style={lbl}>Código</label>
-              <input value={form.codigo_sku} onChange={(e) => setForm({ ...form, codigo_sku: e.target.value.toUpperCase() })} style={inp} required disabled={!!editing} placeholder="Ej: MP-00001" />
+              <label style={lbl}><i className="fas fa-hashtag" style={{ fontSize: 10, marginRight: 4 }} />Código</label>
+              <div style={fiWrap}>
+                <input value={form.codigo_sku} onChange={(e) => setForm({ ...form, codigo_sku: e.target.value.toUpperCase() })} style={fiInp} required disabled={!!editing} placeholder="Ej: MP-00016" />
+                <i className="fas fa-barcode fi-icon" />
+              </div>
             </div>
             <div>
-              <label style={lbl}>Unidad de Medida</label>
-              <select value={form.unidad_medida} onChange={(e) => setForm({ ...form, unidad_medida: e.target.value })} style={inp}>
-                {umOptions.map((u) => <option key={u} value={u}>{u}</option>)}
-              </select>
+              <label style={lbl}><i className="fas fa-ruler" style={{ fontSize: 10, marginRight: 4 }} />Unidad de Medida</label>
+              <div style={fiWrap}>
+                <select value={form.unidad_medida} onChange={(e) => setForm({ ...form, unidad_medida: e.target.value })} style={fiSel}>
+                  {umOptions.map((u) => <option key={u} value={u}>{u}</option>)}
+                </select>
+                <i className="fas fa-ruler fi-icon" />
+              </div>
             </div>
           </div>
           <div style={{ marginBottom: 14 }}>
-            <label style={lbl}>Descripción</label>
-            <input value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} style={inp} required placeholder="Descripción del producto" />
+            <label style={lbl}><i className="fas fa-align-left" style={{ fontSize: 10, marginRight: 4 }} />Descripción</label>
+            <div style={fiWrap}>
+              <input value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} style={fiInp} required placeholder="Descripción del producto" />
+              <i className="fas fa-align-left fi-icon" />
+            </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div>
-              <label style={lbl}>Categoría</label>
-              <input value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value.toUpperCase() })} style={inp} list="cat-datalist" placeholder="MP, PT, INS..." />
-              <datalist id="cat-datalist">{categories.map((c) => <option key={c} value={c} />)}</datalist>
+              <label style={lbl}><i className="fas fa-folder" style={{ fontSize: 10, marginRight: 4 }} />Categoría</label>
+              <div style={fiWrap}>
+                <input value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value.toUpperCase() })} style={fiInp} list="cat-datalist" placeholder="MP, PT, INS..." />
+                <i className="fas fa-folder fi-icon" />
+                <datalist id="cat-datalist">{categories.map((c) => <option key={c} value={c} />)}</datalist>
+              </div>
             </div>
             <div>
-              <label style={lbl}>Subcategoría</label>
-              <input value={form.subcategoria} onChange={(e) => setForm({ ...form, subcategoria: e.target.value })} style={inp} placeholder="Opcional" />
+              <label style={lbl}><i className="fas fa-tag" style={{ fontSize: 10, marginRight: 4 }} />Subcategoría</label>
+              <div style={fiWrap}>
+                <input value={form.subcategoria} onChange={(e) => setForm({ ...form, subcategoria: e.target.value })} style={fiInp} placeholder="Opcional" />
+                <i className="fas fa-tag fi-icon" />
+              </div>
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 24 }}>
             <div>
-              <label style={lbl}>Costo ($)</label>
-              <input type="number" step="0.01" min="0" value={form.costo_unitario} onChange={(e) => setForm({ ...form, costo_unitario: e.target.value })} style={inp} />
+              <label style={lbl}><i className="fas fa-dollar-sign" style={{ fontSize: 10, marginRight: 4 }} />Costo ($)</label>
+              <div style={fiWrap}>
+                <input type="number" step="0.01" min="0" value={form.costo_unitario} onChange={(e) => setForm({ ...form, costo_unitario: e.target.value })} style={fiInp} />
+                <i className="fas fa-dollar-sign fi-icon" />
+              </div>
             </div>
             <div>
-              <label style={lbl}>Precio Referencia ($)</label>
-              <input type="number" step="0.01" min="0" value={form.precio_referencia} onChange={(e) => setForm({ ...form, precio_referencia: e.target.value })} style={inp} />
+              <label style={lbl}><i className="fas fa-tag" style={{ fontSize: 10, marginRight: 4 }} />Precio Referencia ($)</label>
+              <div style={fiWrap}>
+                <input type="number" step="0.01" min="0" value={form.precio_referencia} onChange={(e) => setForm({ ...form, precio_referencia: e.target.value })} style={fiInp} />
+                <i className="fas fa-tag fi-icon" />
+              </div>
             </div>
           </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 16, borderTop: "1px solid var(--m-divider)" }}>
             <button type="button" onClick={() => setShowModal(false)} style={btnGhost}>Cancelar</button>
-            <button type="submit" style={btnPri}>{editing ? "Guardar cambios" : "Crear SKU"}</button>
+            <button type="submit" style={btnPri}><i className="fas fa-check" style={{ fontSize: 11 }} /> {editing ? "Guardar cambios" : "Crear SKU"}</button>
           </div>
         </form>
       </Modal>
@@ -204,7 +225,9 @@ const btnGhost: React.CSSProperties = { display: "inline-flex", alignItems: "cen
 const rowBtn: React.CSSProperties = { width: 30, height: 30, borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", fontSize: 12, transition: "all .2s" };
 const searchStyle: React.CSSProperties = { width: "100%", padding: "10px 14px 10px 40px", borderRadius: 8, border: "1px solid var(--input-border)", background: "var(--input-bg)", color: "var(--text-primary)", fontSize: 13, fontFamily: "inherit", outline: "none", transition: "all .25s ease" };
 const filterStyle: React.CSSProperties = { padding: "10px 36px 10px 14px", borderRadius: 8, border: "1px solid var(--input-border)", background: "var(--input-bg)", color: "var(--text-primary)", fontSize: 13, fontFamily: "inherit", outline: "none", cursor: "pointer", transition: "all .25s ease", appearance: "none", WebkitAppearance: "none" };
-const inp: React.CSSProperties = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--input-border)", background: "var(--input-bg)", color: "var(--text-primary)", fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box", transition: "all .25s ease" };
+const fiInp: React.CSSProperties = { width: "100%", padding: "11px 14px 11px 40px", borderRadius: 10, border: "1.5px solid var(--m-input-border)", background: "var(--m-input-bg)", color: "var(--text-primary)", fontSize: 13.5, fontFamily: "inherit", outline: "none", boxSizing: "border-box", transition: "all .25s ease" };
+const fiSel: React.CSSProperties = { width: "100%", padding: "11px 36px 11px 40px", borderRadius: 10, border: "1.5px solid var(--m-input-border)", background: "var(--m-input-bg)", color: "var(--text-primary)", fontSize: 13.5, fontFamily: "inherit", outline: "none", cursor: "pointer", appearance: "none", WebkitAppearance: "none", boxSizing: "border-box", transition: "all .25s ease" };
+const fiWrap: React.CSSProperties = { position: "relative" };
 const lbl: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".8px", color: "var(--text-muted)", marginBottom: 8, transition: "color .35s" };
 const th: React.CSSProperties = { textAlign: "left", padding: "14px 18px", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".8px", color: "var(--text-muted)", background: "var(--bg-table-head)", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap", transition: "all .5s" };
 const td: React.CSSProperties = { padding: "14px 18px", fontSize: 13, color: "var(--text-secondary)", verticalAlign: "middle", whiteSpace: "nowrap", transition: "color .35s" };

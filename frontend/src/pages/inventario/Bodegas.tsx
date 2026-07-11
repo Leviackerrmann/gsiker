@@ -204,30 +204,45 @@ export default function BodegasPage() {
         </table>
       </div>
 
-      <Modal isOpen={showModal} title={editing ? "Editar Bodega" : "Nueva Bodega"} onClose={() => setShowModal(false)} maxWidth={520}>
+      <Modal isOpen={showModal} title={editing ? "Editar Bodega" : "Nueva Bodega"} icon="fa-warehouse" subtitle={editing ? `Modificando ${editing.nombre}` : "Completa los datos para registrar una nueva bodega"} onClose={() => setShowModal(false)} maxWidth={520}>
         <form onSubmit={handleSubmit}>
           {error && <div style={{ background: "var(--danger-bg)", color: "var(--danger)", padding: "8px 12px", borderRadius: "var(--radius-sm)", marginBottom: 14, fontSize: 13 }}>{error}</div>}
           <div style={{ marginBottom: 18 }}>
-            <label style={lbl}>Nombre</label>
-            <input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} style={inp} required placeholder="Ej: Bodega Central" autoFocus />
+            <label style={lbl}><i className="fas fa-warehouse" style={{ fontSize: 10, marginRight: 4 }} />Nombre</label>
+            <div style={fiWrap}>
+              <input value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} style={fiInp} required placeholder="Ej: Bodega Central" autoFocus />
+              <i className="fas fa-warehouse fi-icon" />
+            </div>
           </div>
           <div style={{ marginBottom: 18 }}>
-            <label style={lbl}>Ubicación</label>
-            <input value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} style={inp} required placeholder="Ej: Av. Principal #100" />
+            <label style={lbl}><i className="fas fa-location-dot" style={{ fontSize: 10, marginRight: 4 }} />Ubicación</label>
+            <div style={fiWrap}>
+              <input value={form.ubicacion} onChange={(e) => setForm({ ...form, ubicacion: e.target.value })} style={fiInp} required placeholder="Ej: Av. Principal #100" />
+              <i className="fas fa-location-dot fi-icon" />
+            </div>
           </div>
           <div style={{ marginBottom: 18 }}>
-            <label style={lbl}>Capacidad Máxima (unidades)</label>
-            <input type="number" min="0" value={form.capacidad} onChange={(e) => setForm({ ...form, capacidad: e.target.value })} style={inp} placeholder="0" />
+            <label style={lbl}><i className="fas fa-cubes" style={{ fontSize: 10, marginRight: 4 }} />Capacidad Máxima (unidades)</label>
+            <div style={fiWrap}>
+              <input type="number" min="0" value={form.capacidad} onChange={(e) => setForm({ ...form, capacidad: e.target.value })} style={fiInp} placeholder="0" />
+              <i className="fas fa-cubes fi-icon" />
+            </div>
           </div>
           <div style={{ marginBottom: 18 }}>
-            <label style={lbl}>Encargado</label>
-            <input value={form.encargado} onChange={(e) => setForm({ ...form, encargado: e.target.value })} style={inp} placeholder="Nombre del responsable" />
+            <label style={lbl}><i className="fas fa-user" style={{ fontSize: 10, marginRight: 4 }} />Encargado</label>
+            <div style={fiWrap}>
+              <input value={form.encargado} onChange={(e) => setForm({ ...form, encargado: e.target.value })} style={fiInp} placeholder="Nombre del responsable" />
+              <i className="fas fa-user fi-icon" />
+            </div>
           </div>
           <div style={{ marginBottom: 24 }}>
-            <label style={lbl}>Notas</label>
-            <input value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} style={inp} placeholder="Observaciones adicionales (opcional)" />
+            <label style={lbl}><i className="fas fa-comment" style={{ fontSize: 10, marginRight: 4 }} />Notas</label>
+            <div style={fiWrap}>
+              <input value={form.notas} onChange={(e) => setForm({ ...form, notas: e.target.value })} style={fiInp} placeholder="Observaciones adicionales (opcional)" />
+              <i className="fas fa-comment fi-icon" />
+            </div>
           </div>
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 16, borderTop: "1px solid var(--m-divider)" }}>
             <button type="button" onClick={() => setShowModal(false)} style={btnGhost}>Cancelar</button>
             <button type="submit" style={btnPri}><i className="fas fa-check" style={{ fontSize: 11 }} /> {editing ? "Guardar cambios" : "Crear Bodega"}</button>
           </div>
@@ -240,7 +255,8 @@ export default function BodegasPage() {
 const btnPri: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "none", color: "#fff", fontFamily: "inherit", background: "linear-gradient(135deg, var(--accent-grad-start), var(--accent-grad-end))", boxShadow: "0 4px 16px var(--accent-glow)", transition: "all .25s ease" };
 const btnGhost: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 8, padding: "9px 18px", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", border: "1px solid var(--border)", background: "transparent", color: "var(--text-secondary)", fontFamily: "inherit", transition: "all .3s ease" };
 const rowBtn: React.CSSProperties = { padding: "6px 14px", borderRadius: 6, border: "1px solid var(--border)", background: "transparent", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 5, cursor: "pointer", fontSize: 12, fontWeight: 500, fontFamily: "inherit", transition: "all .2s", whiteSpace: "nowrap" };
-const inp: React.CSSProperties = { width: "100%", padding: "10px 14px", borderRadius: 8, border: "1px solid var(--input-border)", background: "var(--input-bg)", color: "var(--text-primary)", fontSize: 13, fontFamily: "inherit", outline: "none", boxSizing: "border-box", transition: "all .25s ease" };
+const fiInp: React.CSSProperties = { width: "100%", padding: "11px 14px 11px 40px", borderRadius: 10, border: "1.5px solid var(--m-input-border)", background: "var(--m-input-bg)", color: "var(--text-primary)", fontSize: 13.5, fontFamily: "inherit", outline: "none", boxSizing: "border-box", transition: "all .25s ease" };
+const fiWrap: React.CSSProperties = { position: "relative" };
 const lbl: React.CSSProperties = { display: "block", fontSize: 12, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".8px", color: "var(--text-muted)", marginBottom: 8 };
 const th: React.CSSProperties = { textAlign: "left", padding: "14px 20px", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: ".8px", color: "var(--text-muted)", background: "var(--bg-table-head)", borderBottom: "1px solid var(--border)", whiteSpace: "nowrap" };
 const td: React.CSSProperties = { padding: "16px 20px", fontSize: 13, color: "var(--text-secondary)", verticalAlign: "middle", whiteSpace: "nowrap" };
