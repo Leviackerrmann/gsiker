@@ -3,20 +3,37 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import require_admin
+from app.dependencies import get_current_empresa, require_admin
+from app.models.empresa import Empresa
 from app.models.usuario import RolUsuario, Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioResponse, UsuarioUpdate
 from app.utils.security import hash_password
 
 router = APIRouter(prefix="/api/usuarios", tags=["usuarios"])
 
+# Roles que un admin de empresa puede asignar (no puede crear superadmins de plataforma).
+ROLES_EMPRESA = {RolUsuario.ADMIN, RolUsuario.OPERADOR}
+
+
+def _parse_rol_empresa(rol: str) -> RolUsuario:
+    try:
+        parsed = RolUsuario(rol)
+    except ValueError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rol inválido")
+    if parsed not in ROLES_EMPRESA:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rol no permitido para una empresa")
+    return parsed
+
 
 @router.get("", response_model=list[UsuarioResponse])
 async def list_usuarios(
     db: AsyncSession = Depends(get_db),
+    empresa: Empresa = Depends(get_current_empresa),
     _: Usuario = Depends(require_admin),
 ):
-    result = await db.execute(select(Usuario).order_by(Usuario.nombre_completo))
+    result = await db.execute(
+        select(Usuario).where(Usuario.empresa_id == empresa.id).order_by(Usuario.nombre_completo)
+    )
     return result.scalars().all()
 
 
@@ -24,8 +41,10 @@ async def list_usuarios(
 async def create_usuario(
     body: UsuarioCreate,
     db: AsyncSession = Depends(get_db),
+    empresa: Empresa = Depends(get_current_empresa),
     _: Usuario = Depends(require_admin),
 ):
+    # username y email son únicos globalmente en el esquema actual.
     existing = await db.execute(select(Usuario).where(Usuario.username == body.username))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El username ya existe")
@@ -36,16 +55,13 @@ async def create_usuario(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El email ya existe")
 
     user = Usuario(
+        empresa_id=empresa.id,
         username=body.username,
         email=body.email,
         password_hash=hash_password(body.password),
         nombre_completo=body.nombre_completo,
+        rol=_parse_rol_empresa(body.rol),
     )
-    try:
-        user.rol = RolUsuario(body.rol)
-    except ValueError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rol inválido")
-
     db.add(user)
     await db.flush()
     await db.refresh(user)
@@ -57,9 +73,12 @@ async def update_usuario(
     user_id: int,
     body: UsuarioUpdate,
     db: AsyncSession = Depends(get_db),
+    empresa: Empresa = Depends(get_current_empresa),
     _: Usuario = Depends(require_admin),
 ):
-    result = await db.execute(select(Usuario).where(Usuario.id == user_id))
+    result = await db.execute(
+        select(Usuario).where(Usuario.id == user_id, Usuario.empresa_id == empresa.id)
+    )
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
@@ -69,10 +88,7 @@ async def update_usuario(
     if body.email is not None:
         user.email = body.email
     if body.rol is not None:
-        try:
-            user.rol = RolUsuario(body.rol)
-        except ValueError:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rol inválido")
+        user.rol = _parse_rol_empresa(body.rol)
     if body.activo is not None:
         user.activo = body.activo
 
@@ -85,15 +101,15 @@ async def update_usuario(
 async def delete_usuario(
     user_id: int,
     db: AsyncSession = Depends(get_db),
+    empresa: Empresa = Depends(get_current_empresa),
     _: Usuario = Depends(require_admin),
 ):
-    result = await db.execute(select(Usuario).where(Usuario.id == user_id))
+    result = await db.execute(
+        select(Usuario).where(Usuario.id == user_id, Usuario.empresa_id == empresa.id)
+    )
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado")
-
-    if user.rol == RolUsuario.SUPERADMIN:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se puede eliminar al superadmin")
 
     await db.delete(user)
     await db.flush()

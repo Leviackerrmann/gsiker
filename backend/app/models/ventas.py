@@ -1,10 +1,11 @@
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+from app.models.mixins import TenantMixin
 
 
 class EstadoPedido(str, enum.Enum):
@@ -15,11 +16,11 @@ class EstadoPedido(str, enum.Enum):
     CANCELADO = "cancelado"
 
 
-class Cliente(Base):
+class Cliente(TenantMixin, Base):
     __tablename__ = "clientes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    codigo: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    codigo: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     nombre: Mapped[str] = mapped_column(String(200), nullable=False)
     documento: Mapped[str] = mapped_column(String(30), nullable=True)
     direccion: Mapped[str] = mapped_column(String(255), nullable=True)
@@ -28,12 +29,14 @@ class Cliente(Base):
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+    __table_args__ = (UniqueConstraint("empresa_id", "codigo"),)
 
-class CotizacionVenta(Base):
+
+class CotizacionVenta(TenantMixin, Base):
     __tablename__ = "cotizaciones_venta"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    numero: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    numero: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     cliente_id: Mapped[int] = mapped_column(Integer, ForeignKey("clientes.id", ondelete="RESTRICT"), nullable=False)
     fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     estado: Mapped[str] = mapped_column(String(20), default="pendiente", nullable=False)
@@ -44,6 +47,8 @@ class CotizacionVenta(Base):
     cliente: Mapped["Cliente"] = relationship()
     usuario: Mapped["Usuario"] = relationship()
     items: Mapped[list["ItemCotizacionVenta"]] = relationship(back_populates="cotizacion", cascade="all, delete-orphan")
+
+    __table_args__ = (UniqueConstraint("empresa_id", "numero"),)
 
 
 class ItemCotizacionVenta(Base):
@@ -60,11 +65,11 @@ class ItemCotizacionVenta(Base):
     sku: Mapped["SKU"] = relationship()
 
 
-class PedidoVenta(Base):
+class PedidoVenta(TenantMixin, Base):
     __tablename__ = "pedidos_venta"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    numero: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    numero: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     cliente_id: Mapped[int] = mapped_column(Integer, ForeignKey("clientes.id", ondelete="RESTRICT"), nullable=False)
     cotizacion_id: Mapped[int] = mapped_column(Integer, ForeignKey("cotizaciones_venta.id", ondelete="SET NULL"), nullable=True)
     fecha_emision: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -79,6 +84,8 @@ class PedidoVenta(Base):
 
     cliente: Mapped["Cliente"] = relationship()
     items: Mapped[list["ItemPedidoVenta"]] = relationship(back_populates="pedido", cascade="all, delete-orphan")
+
+    __table_args__ = (UniqueConstraint("empresa_id", "numero"),)
 
 
 class ItemPedidoVenta(Base):
@@ -96,7 +103,7 @@ class ItemPedidoVenta(Base):
     sku: Mapped["SKU"] = relationship()
 
 
-class DespachoVenta(Base):
+class DespachoVenta(TenantMixin, Base):
     __tablename__ = "despachos_venta"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -123,17 +130,17 @@ class ItemDespacho(Base):
     item_pedido: Mapped["ItemPedidoVenta"] = relationship()
 
 
-class FacturaVenta(Base):
+class FacturaVenta(TenantMixin, Base):
     __tablename__ = "facturas_venta"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    numero: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    numero: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     pedido_id: Mapped[int] = mapped_column(Integer, ForeignKey("pedidos_venta.id", ondelete="RESTRICT"), nullable=False)
     cliente_id: Mapped[int] = mapped_column(Integer, ForeignKey("clientes.id", ondelete="RESTRICT"), nullable=False)
     fecha_emision: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     fecha_vencimiento: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     subtotal: Mapped[float] = mapped_column(Float, default=0.0)
-    impuesto_porcentaje: Mapped[float] = mapped_column(Float, default=16.0)
+    impuesto_porcentaje: Mapped[float] = mapped_column(Float, default=12.0)  # IVA Guatemala
     impuesto_total: Mapped[float] = mapped_column(Float, default=0.0)
     total: Mapped[float] = mapped_column(Float, default=0.0)
     estado: Mapped[str] = mapped_column(String(20), default="pendiente", nullable=False)
@@ -143,8 +150,10 @@ class FacturaVenta(Base):
     pedido: Mapped["PedidoVenta"] = relationship()
     cliente: Mapped["Cliente"] = relationship()
 
+    __table_args__ = (UniqueConstraint("empresa_id", "numero"),)
 
-class DevolucionVenta(Base):
+
+class DevolucionVenta(TenantMixin, Base):
     __tablename__ = "devoluciones_venta"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

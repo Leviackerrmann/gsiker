@@ -3,9 +3,8 @@ from datetime import datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.inventario import MovimientoInventario, ReservaStock, Stock, TipoMovimiento
+from app.models.inventario import MovimientoInventario, Stock, TipoMovimiento
 from app.models.sku import SKU
-from app.services.inventario import StockInsuficiente
 
 
 async def calcular_pmp_entrada(
@@ -18,7 +17,7 @@ async def calcular_pmp_entrada(
         return sku.costo_unitario
 
     result = await db.execute(
-        select(Stock).where(Stock.sku_id == sku.id)
+        select(Stock).where(Stock.empresa_id == sku.empresa_id, Stock.sku_id == sku.id)
     )
     stocks = result.scalars().all()
     total_stock = sum(s.cantidad for s in stocks)
@@ -34,46 +33,19 @@ async def calcular_pmp_entrada(
     return round(nuevo_costo, 4)
 
 
-async def validar_stock_disponible(
-    db: AsyncSession,
-    sku_id: int,
-    bodega_id: int,
-    cantidad: float,
-) -> float:
-    from sqlalchemy import func
-
-    result = await db.execute(
-        select(Stock).where(Stock.sku_id == sku_id, Stock.bodega_id == bodega_id)
-    )
-    stock = result.scalar_one_or_none()
-    disponible = stock.cantidad if stock else 0.0
-
-    result_r = await db.execute(
-        select(func.coalesce(func.sum(ReservaStock.cantidad), 0.0)).where(
-            ReservaStock.sku_id == sku_id,
-            ReservaStock.bodega_id == bodega_id,
-        )
-    )
-    reservado = result_r.scalar() or 0.0
-    disponible -= reservado
-
-    if disponible < cantidad:
-        raise StockInsuficiente(
-            f"Stock insuficiente: disponible={disponible}, solicitado={cantidad}"
-        )
-
-    return disponible
-
-
 async def generar_kardex(
     db: AsyncSession,
+    empresa_id: int,
     sku_id: int,
     fecha_desde: str | None = None,
     fecha_hasta: str | None = None,
 ) -> list[dict]:
     stmt = (
         select(MovimientoInventario)
-        .where(MovimientoInventario.sku_id == sku_id)
+        .where(
+            MovimientoInventario.empresa_id == empresa_id,
+            MovimientoInventario.sku_id == sku_id,
+        )
     )
     if fecha_desde:
         stmt = stmt.where(MovimientoInventario.fecha >= datetime.fromisoformat(fecha_desde))

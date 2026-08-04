@@ -13,14 +13,17 @@ from app.services.inventario import actualizar_stock
 from app.services.valorizacion import calcular_pmp_entrada
 
 
-async def generar_numero_oc(db: AsyncSession) -> str:
-    result = await db.execute(select(func.count()).select_from(OrdenCompra))
+async def generar_numero_oc(db: AsyncSession, empresa_id: int) -> str:
+    result = await db.execute(
+        select(func.count()).select_from(OrdenCompra).where(OrdenCompra.empresa_id == empresa_id)
+    )
     count = result.scalar() or 0
     return f"OC-{count + 1:06d}"
 
 
 async def procesar_recepcion(
     db: AsyncSession,
+    empresa_id: int,
     orden_id: int,
     bodega_id: int,
     items_recibidos: list[dict],
@@ -28,7 +31,7 @@ async def procesar_recepcion(
     nota: str | None = None,
 ) -> RecepcionCompra:
     result = await db.execute(
-        select(OrdenCompra).where(OrdenCompra.id == orden_id)
+        select(OrdenCompra).where(OrdenCompra.id == orden_id, OrdenCompra.empresa_id == empresa_id)
     )
     orden = result.scalar_one_or_none()
     if orden is None:
@@ -37,6 +40,7 @@ async def procesar_recepcion(
         raise ValueError("No se puede recibir una orden cancelada")
 
     recepcion = RecepcionCompra(
+        empresa_id=empresa_id,
         orden_id=orden_id,
         nota=nota,
         usuario_id=usuario_id,
@@ -77,10 +81,13 @@ async def procesar_recepcion(
         total_recibido += item.cantidad_recibida
         total_solicitado += item.cantidad_solicitada
 
-        sku_result = await db.execute(select(SKU).where(SKU.id == item.sku_id))
+        sku_result = await db.execute(
+            select(SKU).where(SKU.id == item.sku_id, SKU.empresa_id == empresa_id)
+        )
         sku = sku_result.scalar_one()
 
         movimiento = MovimientoInventario(
+            empresa_id=empresa_id,
             tipo=TipoMovimiento.ENTRADA,
             motivo=MotivoMovimiento.COMPRA,
             sku_id=item.sku_id,
@@ -94,7 +101,7 @@ async def procesar_recepcion(
         db.add(movimiento)
 
         sku.costo_unitario = await calcular_pmp_entrada(db, sku, cantidad, item.costo_unitario)
-        await actualizar_stock(db, item.sku_id, bodega_id, cantidad, TipoMovimiento.ENTRADA)
+        await actualizar_stock(db, empresa_id, item.sku_id, bodega_id, cantidad, TipoMovimiento.ENTRADA)
 
     if total_recibido >= total_solicitado:
         orden.estado = EstadoOrden.COMPLETA

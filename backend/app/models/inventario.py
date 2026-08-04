@@ -5,6 +5,7 @@ from sqlalchemy import Boolean, DateTime, Enum, Float, ForeignKey, Integer, Stri
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+from app.models.mixins import TenantMixin
 
 
 class TipoMovimiento(str, enum.Enum):
@@ -31,7 +32,7 @@ class EstadoConteo(str, enum.Enum):
     AJUSTADO = "ajustado"
 
 
-class Lote(Base):
+class Lote(TenantMixin, Base):
     __tablename__ = "lotes"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -47,11 +48,11 @@ class Lote(Base):
     __table_args__ = (UniqueConstraint("sku_id", "numero_lote"),)
 
 
-class Bodega(Base):
+class Bodega(TenantMixin, Base):
     __tablename__ = "bodegas"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    nombre: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
+    nombre: Mapped[str] = mapped_column(String(200), nullable=False)
     ubicacion: Mapped[str] = mapped_column(String(255), nullable=True)
     activa: Mapped[bool] = mapped_column(default=True, nullable=False)
     capacidad: Mapped[float] = mapped_column(Float, nullable=True)
@@ -61,8 +62,10 @@ class Bodega(Base):
 
     stocks: Mapped[list["Stock"]] = relationship(back_populates="bodega", cascade="all, delete-orphan")
 
+    __table_args__ = (UniqueConstraint("empresa_id", "nombre"),)
 
-class Stock(Base):
+
+class Stock(TenantMixin, Base):
     __tablename__ = "stocks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -81,7 +84,7 @@ class Stock(Base):
     ubicacion: Mapped["Ubicacion"] = relationship()
 
 
-class MovimientoInventario(Base):
+class MovimientoInventario(TenantMixin, Base):
     __tablename__ = "movimientos_inventario"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -107,7 +110,7 @@ class MovimientoInventario(Base):
     ubicacion: Mapped["Ubicacion"] = relationship()
 
 
-class ReservaStock(Base):
+class ReservaStock(TenantMixin, Base):
     __tablename__ = "reservas_stock"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -127,7 +130,7 @@ class ReservaStock(Base):
     ubicacion: Mapped["Ubicacion"] = relationship()
 
 
-class InventarioFisico(Base):
+class InventarioFisico(TenantMixin, Base):
     __tablename__ = "inventarios_fisicos"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -159,7 +162,7 @@ class ItemInventarioFisico(Base):
     ubicacion: Mapped["Ubicacion"] = relationship()
 
 
-class Ubicacion(Base):
+class Ubicacion(TenantMixin, Base):
     __tablename__ = "ubicaciones"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

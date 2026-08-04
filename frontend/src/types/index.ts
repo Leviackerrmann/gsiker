@@ -1,11 +1,41 @@
 export interface User {
   id: number;
+  empresa_id: number | null;
   username: string;
   email: string | null;
   nombre_completo: string;
   rol: string;
   activo: boolean;
   fecha_creacion: string;
+}
+
+export type RegimenFiscal = "general" | "pequeno_contribuyente";
+
+export interface Empresa {
+  id: number;
+  nombre: string;
+  nombre_comercial: string | null;
+  nit: string | null;
+  direccion: string | null;
+  telefono: string | null;
+  email: string | null;
+  regimen_fiscal: RegimenFiscal;
+  moneda: string;
+  logo_url: string | null;
+  plan_id: number | null;
+  activa: boolean;
+  fecha_creacion: string;
+}
+
+export interface RegistroEmpresa {
+  empresa_nombre: string;
+  nit?: string;
+  regimen_fiscal?: RegimenFiscal;
+  telefono?: string;
+  admin_username: string;
+  admin_password: string;
+  admin_nombre_completo: string;
+  admin_email?: string;
 }
 
 export interface Bodega {

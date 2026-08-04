@@ -1,16 +1,13 @@
-from sqlalchemy import select, func
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.inventario import (
-    Bodega,
     MotivoMovimiento,
     MovimientoInventario,
     ReservaStock,
     Stock,
     TipoMovimiento,
 )
-from app.models.sku import SKU
 
 
 class StockInsuficiente(ValueError):
@@ -19,6 +16,7 @@ class StockInsuficiente(ValueError):
 
 async def actualizar_stock(
     db: AsyncSession,
+    empresa_id: int,
     sku_id: int,
     bodega_id: int,
     cantidad: float,
@@ -29,6 +27,7 @@ async def actualizar_stock(
 
     result = await db.execute(
         select(Stock).where(
+            Stock.empresa_id == empresa_id,
             Stock.sku_id == sku_id,
             Stock.bodega_id == bodega_id,
             Stock.lote_id == lote_id,
@@ -40,7 +39,13 @@ async def actualizar_stock(
         existing.cantidad += delta
         stock = existing
     else:
-        stock = Stock(sku_id=sku_id, bodega_id=bodega_id, lote_id=lote_id, cantidad=delta)
+        stock = Stock(
+            empresa_id=empresa_id,
+            sku_id=sku_id,
+            bodega_id=bodega_id,
+            lote_id=lote_id,
+            cantidad=delta,
+        )
         db.add(stock)
         await db.flush()
 
@@ -49,12 +54,14 @@ async def actualizar_stock(
 
 async def validar_stock_disponible(
     db: AsyncSession,
+    empresa_id: int,
     sku_id: int,
     bodega_id: int,
     cantidad: float,
     lote_id: int | None = None,
 ) -> float:
     stmt = select(func.coalesce(func.sum(Stock.cantidad), 0.0)).where(
+        Stock.empresa_id == empresa_id,
         Stock.sku_id == sku_id,
         Stock.bodega_id == bodega_id,
     )
@@ -64,6 +71,7 @@ async def validar_stock_disponible(
     disponible = result.scalar() or 0.0
 
     reserva_stmt = select(func.coalesce(func.sum(ReservaStock.cantidad), 0.0)).where(
+        ReservaStock.empresa_id == empresa_id,
         ReservaStock.sku_id == sku_id,
         ReservaStock.bodega_id == bodega_id,
     )
@@ -83,6 +91,7 @@ async def validar_stock_disponible(
 
 async def crear_transferencia(
     db: AsyncSession,
+    empresa_id: int,
     sku_id: int,
     bodega_origen_id: int,
     bodega_destino_id: int,
@@ -92,11 +101,12 @@ async def crear_transferencia(
     referencia: str | None = None,
     lote_id: int | None = None,
 ) -> tuple[MovimientoInventario, MovimientoInventario]:
-    await validar_stock_disponible(db, sku_id, bodega_origen_id, cantidad, lote_id=lote_id)
+    await validar_stock_disponible(db, empresa_id, sku_id, bodega_origen_id, cantidad, lote_id=lote_id)
 
     costo_total = round(cantidad * costo_unitario, 2)
 
     salida = MovimientoInventario(
+        empresa_id=empresa_id,
         tipo=TipoMovimiento.SALIDA,
         motivo=MotivoMovimiento.TRANSFERENCIA_SALIDA,
         sku_id=sku_id,
@@ -109,6 +119,7 @@ async def crear_transferencia(
         usuario_id=usuario_id,
     )
     entrada = MovimientoInventario(
+        empresa_id=empresa_id,
         tipo=TipoMovimiento.ENTRADA,
         motivo=MotivoMovimiento.TRANSFERENCIA_ENTRADA,
         sku_id=sku_id,
@@ -124,7 +135,7 @@ async def crear_transferencia(
     db.add(salida)
     db.add(entrada)
 
-    await actualizar_stock(db, sku_id, bodega_origen_id, cantidad, TipoMovimiento.SALIDA, lote_id=lote_id)
-    await actualizar_stock(db, sku_id, bodega_destino_id, cantidad, TipoMovimiento.ENTRADA, lote_id=lote_id)
+    await actualizar_stock(db, empresa_id, sku_id, bodega_origen_id, cantidad, TipoMovimiento.SALIDA, lote_id=lote_id)
+    await actualizar_stock(db, empresa_id, sku_id, bodega_destino_id, cantidad, TipoMovimiento.ENTRADA, lote_id=lote_id)
 
     return salida, entrada

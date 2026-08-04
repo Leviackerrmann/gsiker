@@ -45,7 +45,7 @@ const singleItems: NavItem[] = [
 const iconStyle: React.CSSProperties = { width: 18, textAlign: "center", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
 
 export default function Sidebar() {
-  const { user, logout } = useAuth();
+  const { user, empresa, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const isAdmin = user?.rol === "admin" || user?.rol === "superadmin";
@@ -74,7 +74,7 @@ export default function Sidebar() {
         </div>
         <div>
           <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 16, color: "var(--text-primary)", letterSpacing: "-0.3px", transition: "var(--transition)" }}>minisap</div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 400, transition: "var(--transition)" }}>ERP v1.0</div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 400, transition: "var(--transition)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={empresa?.nombre}>{empresa?.nombre || "ERP v1.0"}</div>
         </div>
       </div>
 

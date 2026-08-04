@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function Login() {
@@ -141,7 +141,9 @@ export default function Login() {
             </form>
 
             <div style={{ textAlign: "center", marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--border)", position: "relative", zIndex: 1, animation: "fadeIn .4s ease .6s both" }}>
-              <span style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: ".5px" }}>minisap v1.0</span>
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>¿No tienes empresa? </span>
+              <Link to="/register" style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}>Regístrala gratis</Link>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: ".5px", marginTop: 12 }}>minisap v1.0</div>
             </div>
           </div>
         </div>

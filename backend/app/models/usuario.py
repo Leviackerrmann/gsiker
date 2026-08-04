@@ -1,15 +1,18 @@
 import enum
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Enum, Integer, String
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base
 
 
 class RolUsuario(str, enum.Enum):
+    # Dueño de la plataforma SaaS: empresa_id NULL, no pertenece a ninguna empresa.
     SUPERADMIN = "superadmin"
+    # Admin de una empresa concreta.
     ADMIN = "admin"
+    # Operador de una empresa concreta.
     OPERADOR = "operador"
 
 
@@ -17,6 +20,10 @@ class Usuario(Base):
     __tablename__ = "usuarios"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    # NULL solo para el superadmin de plataforma; todo usuario de empresa lo tiene.
+    empresa_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("empresas.id", ondelete="CASCADE"), nullable=True, index=True
+    )
     username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False, index=True)
     email: Mapped[str] = mapped_column(String(255), unique=True, nullable=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)

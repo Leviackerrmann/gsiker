@@ -5,6 +5,7 @@ from sqlalchemy import DateTime, Enum, Float, ForeignKey, Integer, String, Text,
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+from app.models.mixins import TenantMixin
 
 
 class EstadoOrden(str, enum.Enum):
@@ -14,11 +15,11 @@ class EstadoOrden(str, enum.Enum):
     CANCELADA = "cancelada"
 
 
-class Proveedor(Base):
+class Proveedor(TenantMixin, Base):
     __tablename__ = "proveedores"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    codigo: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    codigo: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     nombre: Mapped[str] = mapped_column(String(200), nullable=False)
     documento: Mapped[str] = mapped_column(String(30), nullable=True)
     direccion: Mapped[str] = mapped_column(String(255), nullable=True)
@@ -27,12 +28,14 @@ class Proveedor(Base):
     activo: Mapped[bool] = mapped_column(default=True, nullable=False)
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
+    __table_args__ = (UniqueConstraint("empresa_id", "codigo"),)
 
-class OrdenCompra(Base):
+
+class OrdenCompra(TenantMixin, Base):
     __tablename__ = "ordenes_compra"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    numero_oc: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    numero_oc: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     proveedor_id: Mapped[int] = mapped_column(Integer, ForeignKey("proveedores.id", ondelete="RESTRICT"), nullable=False)
     fecha_emision: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     fecha_entrega: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -43,6 +46,8 @@ class OrdenCompra(Base):
 
     proveedor: Mapped["Proveedor"] = relationship()
     items: Mapped[list["ItemOrdenCompra"]] = relationship(back_populates="orden", cascade="all, delete-orphan")
+
+    __table_args__ = (UniqueConstraint("empresa_id", "numero_oc"),)
 
 
 class ItemOrdenCompra(Base):
@@ -62,7 +67,7 @@ class ItemOrdenCompra(Base):
     lote: Mapped["Lote"] = relationship()
 
 
-class RecepcionCompra(Base):
+class RecepcionCompra(TenantMixin, Base):
     __tablename__ = "recepciones_compra"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -90,11 +95,11 @@ class ItemRecepcion(Base):
     lote: Mapped["Lote"] = relationship()
 
 
-class SolicitudCompra(Base):
+class SolicitudCompra(TenantMixin, Base):
     __tablename__ = "solicitudes_compra"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    numero: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    numero: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     usuario_id: Mapped[int] = mapped_column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     estado: Mapped[str] = mapped_column(String(20), default="pendiente", nullable=False)
@@ -103,6 +108,8 @@ class SolicitudCompra(Base):
 
     usuario: Mapped["Usuario"] = relationship()
     items: Mapped[list["ItemSolicitudCompra"]] = relationship(back_populates="solicitud", cascade="all, delete-orphan")
+
+    __table_args__ = (UniqueConstraint("empresa_id", "numero"),)
 
 
 class ItemSolicitudCompra(Base):
@@ -118,7 +125,7 @@ class ItemSolicitudCompra(Base):
     sku: Mapped["SKU"] = relationship()
 
 
-class PrecioProveedor(Base):
+class PrecioProveedor(TenantMixin, Base):
     __tablename__ = "precios_proveedor"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -133,7 +140,7 @@ class PrecioProveedor(Base):
     __table_args__ = (UniqueConstraint("proveedor_id", "sku_id"),)
 
 
-class DevolucionCompra(Base):
+class DevolucionCompra(TenantMixin, Base):
     __tablename__ = "devoluciones_compra"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -158,11 +165,11 @@ class ItemDevolucionCompra(Base):
     item_orden: Mapped["ItemOrdenCompra"] = relationship()
 
 
-class CotizacionCompra(Base):
+class CotizacionCompra(TenantMixin, Base):
     __tablename__ = "cotizaciones_compra"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    numero: Mapped[str] = mapped_column(String(50), unique=True, nullable=False, index=True)
+    numero: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
     fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     estado: Mapped[str] = mapped_column(String(20), default="pendiente", nullable=False)
     notas: Mapped[str] = mapped_column(Text, nullable=True)
@@ -172,6 +179,8 @@ class CotizacionCompra(Base):
     usuario: Mapped["Usuario"] = relationship()
     items: Mapped[list["ItemCotizacion"]] = relationship(back_populates="cotizacion", cascade="all, delete-orphan")
     propuestas: Mapped[list["PropuestaCotizacion"]] = relationship(back_populates="cotizacion", cascade="all, delete-orphan")
+
+    __table_args__ = (UniqueConstraint("empresa_id", "numero"),)
 
 
 class ItemCotizacion(Base):
@@ -186,7 +195,7 @@ class ItemCotizacion(Base):
     sku: Mapped["SKU"] = relationship()
 
 
-class PropuestaCotizacion(Base):
+class PropuestaCotizacion(TenantMixin, Base):
     __tablename__ = "propuestas_cotizacion"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

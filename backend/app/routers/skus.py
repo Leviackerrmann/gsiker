@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_admin
+from app.dependencies import get_current_empresa, require_admin
+from app.models.empresa import Empresa
 from app.models.sku import SKU
 from app.schemas.sku import SKUCreate, SKUResponse, SKUUpdate
 
@@ -17,9 +18,9 @@ async def list_skus(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    empresa: Empresa = Depends(get_current_empresa),
 ):
-    stmt = select(SKU)
+    stmt = select(SKU).where(SKU.empresa_id == empresa.id)
 
     if q:
         stmt = stmt.where(
@@ -36,10 +37,13 @@ async def list_skus(
 @router.get("/categorias")
 async def list_categorias(
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    empresa: Empresa = Depends(get_current_empresa),
 ):
     result = await db.execute(
-        select(SKU.categoria).where(SKU.categoria != None).distinct().order_by(SKU.categoria)
+        select(SKU.categoria)
+        .where(SKU.empresa_id == empresa.id, SKU.categoria.isnot(None))
+        .distinct()
+        .order_by(SKU.categoria)
     )
     return [row[0] for row in result.all() if row[0]]
 
@@ -48,9 +52,11 @@ async def list_categorias(
 async def get_sku(
     sku_id: int,
     db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
+    empresa: Empresa = Depends(get_current_empresa),
 ):
-    result = await db.execute(select(SKU).where(SKU.id == sku_id))
+    result = await db.execute(
+        select(SKU).where(SKU.id == sku_id, SKU.empresa_id == empresa.id)
+    )
     sku = result.scalar_one_or_none()
     if sku is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SKU no encontrado")
@@ -61,24 +67,29 @@ async def get_sku(
 async def create_sku(
     body: SKUCreate,
     db: AsyncSession = Depends(get_db),
+    empresa: Empresa = Depends(get_current_empresa),
     _=Depends(require_admin),
 ):
     codigo = body.codigo_sku.strip().upper()
     if codigo.endswith("-") and body.categoria:
         prefix = codigo
         result = await db.execute(
-            select(func.count()).select_from(SKU).where(SKU.codigo_sku.like(f"{prefix}%"))
+            select(func.count())
+            .select_from(SKU)
+            .where(SKU.empresa_id == empresa.id, SKU.codigo_sku.like(f"{prefix}%"))
         )
         count = result.scalar() or 0
         codigo = f"{prefix}{count + 1:05d}"
 
-    existing = await db.execute(select(SKU).where(SKU.codigo_sku == codigo))
+    existing = await db.execute(
+        select(SKU).where(SKU.empresa_id == empresa.id, SKU.codigo_sku == codigo)
+    )
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El código SKU ya existe")
 
     sku_data = body.model_dump()
     sku_data["codigo_sku"] = codigo
-    sku = SKU(**sku_data)
+    sku = SKU(**sku_data, empresa_id=empresa.id)
     db.add(sku)
     await db.flush()
     await db.refresh(sku)
@@ -90,9 +101,12 @@ async def update_sku(
     sku_id: int,
     body: SKUUpdate,
     db: AsyncSession = Depends(get_db),
+    empresa: Empresa = Depends(get_current_empresa),
     _=Depends(require_admin),
 ):
-    result = await db.execute(select(SKU).where(SKU.id == sku_id))
+    result = await db.execute(
+        select(SKU).where(SKU.id == sku_id, SKU.empresa_id == empresa.id)
+    )
     sku = result.scalar_one_or_none()
     if sku is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SKU no encontrado")
@@ -105,8 +119,14 @@ async def update_sku(
     await db.refresh(sku)
     return sku
 
+
 @router.post("/importar")
-async def importar_skus(body: dict, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
+async def importar_skus(
+    body: dict,
+    db: AsyncSession = Depends(get_db),
+    empresa: Empresa = Depends(get_current_empresa),
+    _=Depends(require_admin),
+):
     items = body.get("items", [])
     creados = 0
     errores = []
@@ -115,11 +135,14 @@ async def importar_skus(body: dict, db: AsyncSession = Depends(get_db), _=Depend
         if not codigo:
             errores.append({"fila": it, "error": "código SKU vacío"})
             continue
-        existing = await db.execute(select(SKU).where(SKU.codigo_sku == codigo))
+        existing = await db.execute(
+            select(SKU).where(SKU.empresa_id == empresa.id, SKU.codigo_sku == codigo)
+        )
         if existing.scalar_one_or_none():
             errores.append({"fila": codigo, "error": "ya existe"})
             continue
         sku = SKU(
+            empresa_id=empresa.id,
             codigo_sku=codigo,
             descripcion=it.get("descripcion", ""),
             unidad_medida=it.get("unidad_medida", "UNIDAD"),

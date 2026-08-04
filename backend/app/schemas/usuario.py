@@ -20,6 +20,7 @@ class UsuarioUpdate(BaseModel):
 
 class UsuarioResponse(BaseModel):
     id: int
+    empresa_id: int | None
     username: str
     email: str | None
     nombre_completo: str

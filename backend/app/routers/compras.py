@@ -1,32 +1,46 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, func
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_admin
+from app.dependencies import get_current_empresa, get_current_user, require_admin
 from app.models.compras import (
+    CotizacionCompra,
+    DevolucionCompra,
     EstadoOrden,
+    ItemCotizacion,
+    ItemDevolucionCompra,
     ItemOrdenCompra,
+    ItemPropuesta,
+    ItemRecepcion,
+    ItemSolicitudCompra,
     OrdenCompra,
+    PrecioProveedor,
+    PropuestaCotizacion,
     Proveedor,
     RecepcionCompra,
+    SolicitudCompra,
 )
+from app.models.empresa import Empresa
+from app.models.inventario import MotivoMovimiento, MovimientoInventario, TipoMovimiento
 from app.models.sku import SKU
 from app.models.usuario import Usuario
 from app.schemas.compras import (
     ItemOCResponse,
+    ItemRecepcionResponse,
     OrdenCreate,
     OrdenResponse,
-    OrdenUpdate,
     ProveedorCreate,
     ProveedorResponse,
     ProveedorUpdate,
     RecepcionCreate,
     RecepcionResponse,
-    ItemRecepcionResponse,
 )
 from app.services.compras import generar_numero_oc, procesar_recepcion
+from app.services.inventario import actualizar_stock
 
 router = APIRouter(prefix="/api/compras", tags=["compras"])
 
@@ -34,17 +48,17 @@ router = APIRouter(prefix="/api/compras", tags=["compras"])
 # ═══ PROVEEDORES ═══════════════════════════════════════════
 
 @router.get("/proveedores", response_model=list[ProveedorResponse])
-async def list_proveedores(db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
-    result = await db.execute(select(Proveedor).order_by(Proveedor.nombre))
+async def list_proveedores(db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa)):
+    result = await db.execute(select(Proveedor).where(Proveedor.empresa_id == empresa.id).order_by(Proveedor.nombre))
     return result.scalars().all()
 
 
 @router.post("/proveedores", response_model=ProveedorResponse, status_code=status.HTTP_201_CREATED)
-async def create_proveedor(body: ProveedorCreate, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
-    existing = await db.execute(select(Proveedor).where(Proveedor.codigo == body.codigo))
+async def create_proveedor(body: ProveedorCreate, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), _=Depends(require_admin)):
+    existing = await db.execute(select(Proveedor).where(Proveedor.empresa_id == empresa.id, Proveedor.codigo == body.codigo))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El código ya existe")
-    prov = Proveedor(**body.model_dump())
+    prov = Proveedor(**body.model_dump(), empresa_id=empresa.id)
     db.add(prov)
     await db.flush()
     await db.refresh(prov)
@@ -52,8 +66,8 @@ async def create_proveedor(body: ProveedorCreate, db: AsyncSession = Depends(get
 
 
 @router.put("/proveedores/{prov_id}", response_model=ProveedorResponse)
-async def update_proveedor(prov_id: int, body: ProveedorUpdate, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
-    result = await db.execute(select(Proveedor).where(Proveedor.id == prov_id))
+async def update_proveedor(prov_id: int, body: ProveedorUpdate, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), _=Depends(require_admin)):
+    result = await db.execute(select(Proveedor).where(Proveedor.id == prov_id, Proveedor.empresa_id == empresa.id))
     prov = result.scalar_one_or_none()
     if prov is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proveedor no encontrado")
@@ -66,55 +80,7 @@ async def update_proveedor(prov_id: int, body: ProveedorUpdate, db: AsyncSession
 
 # ═══ ÓRDENES DE COMPRA ════════════════════════════════════
 
-@router.get("/ordenes", response_model=list[OrdenResponse])
-async def list_ordenes(
-    estado: str | None = None,
-    proveedor_id: int | None = None,
-    db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_user),
-):
-    stmt = (
-        select(OrdenCompra)
-        .options(selectinload(OrdenCompra.proveedor), selectinload(OrdenCompra.items).selectinload(ItemOrdenCompra.sku))
-        .order_by(OrdenCompra.fecha_emision.desc())
-    )
-    if estado:
-        try:
-            stmt = stmt.where(OrdenCompra.estado == EstadoOrden(estado))
-        except ValueError:
-            pass
-    if proveedor_id:
-        stmt = stmt.where(OrdenCompra.proveedor_id == proveedor_id)
-
-    result = await db.execute(stmt)
-    ordenes = result.scalars().unique().all()
-
-    return [
-        OrdenResponse(
-            id=o.id, numero_oc=o.numero_oc, proveedor_id=o.proveedor_id,
-            proveedor_nombre=o.proveedor.nombre, fecha_emision=o.fecha_emision,
-            fecha_entrega=o.fecha_entrega, estado=o.estado.value, nota=o.nota,
-            usuario_id=o.usuario_id, created_at=o.created_at,
-            items=[ItemOCResponse(
-                id=i.id, sku_id=i.sku_id, sku_codigo=i.sku.codigo_sku,
-                sku_descripcion=i.sku.descripcion,
-                cantidad_solicitada=i.cantidad_solicitada,
-                cantidad_recibida=i.cantidad_recibida,
-                costo_unitario=i.costo_unitario, costo_total=i.costo_total,
-            ) for i in o.items],
-        ) for o in ordenes
-    ]
-
-
-@router.get("/ordenes/{orden_id}", response_model=OrdenResponse)
-async def get_orden(orden_id: int, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
-    result = await db.execute(
-        select(OrdenCompra).where(OrdenCompra.id == orden_id)
-        .options(selectinload(OrdenCompra.proveedor), selectinload(OrdenCompra.items).selectinload(ItemOrdenCompra.sku))
-    )
-    o = result.scalar_one_or_none()
-    if o is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Orden no encontrada")
+def _orden_to_response(o: OrdenCompra) -> OrdenResponse:
     return OrdenResponse(
         id=o.id, numero_oc=o.numero_oc, proveedor_id=o.proveedor_id,
         proveedor_nombre=o.proveedor.nombre, fecha_emision=o.fecha_emision,
@@ -130,22 +96,63 @@ async def get_orden(orden_id: int, db: AsyncSession = Depends(get_db), _=Depends
     )
 
 
+@router.get("/ordenes", response_model=list[OrdenResponse])
+async def list_ordenes(
+    estado: str | None = None,
+    proveedor_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+    empresa: Empresa = Depends(get_current_empresa),
+):
+    stmt = (
+        select(OrdenCompra)
+        .where(OrdenCompra.empresa_id == empresa.id)
+        .options(selectinload(OrdenCompra.proveedor), selectinload(OrdenCompra.items).selectinload(ItemOrdenCompra.sku))
+        .order_by(OrdenCompra.fecha_emision.desc())
+    )
+    if estado:
+        try:
+            stmt = stmt.where(OrdenCompra.estado == EstadoOrden(estado))
+        except ValueError:
+            pass
+    if proveedor_id:
+        stmt = stmt.where(OrdenCompra.proveedor_id == proveedor_id)
+
+    result = await db.execute(stmt)
+    ordenes = result.scalars().unique().all()
+    return [_orden_to_response(o) for o in ordenes]
+
+
+@router.get("/ordenes/{orden_id}", response_model=OrdenResponse)
+async def get_orden(orden_id: int, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa)):
+    result = await db.execute(
+        select(OrdenCompra).where(OrdenCompra.id == orden_id, OrdenCompra.empresa_id == empresa.id)
+        .options(selectinload(OrdenCompra.proveedor), selectinload(OrdenCompra.items).selectinload(ItemOrdenCompra.sku))
+    )
+    o = result.scalar_one_or_none()
+    if o is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Orden no encontrada")
+    return _orden_to_response(o)
+
+
 @router.post("/ordenes", response_model=OrdenResponse, status_code=status.HTTP_201_CREATED)
 async def create_orden(
     body: OrdenCreate,
     db: AsyncSession = Depends(get_db),
+    empresa: Empresa = Depends(get_current_empresa),
     current_user: Usuario = Depends(get_current_user),
 ):
     if not body.items:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Debe incluir al menos un ítem")
 
-    prov = await db.execute(select(Proveedor).where(Proveedor.id == body.proveedor_id))
-    if prov.scalar_one_or_none() is None:
+    prov = await db.execute(select(Proveedor).where(Proveedor.id == body.proveedor_id, Proveedor.empresa_id == empresa.id))
+    prov_obj = prov.scalar_one_or_none()
+    if prov_obj is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proveedor no encontrado")
 
-    numero = await generar_numero_oc(db)
+    numero = await generar_numero_oc(db, empresa.id)
 
     orden = OrdenCompra(
+        empresa_id=empresa.id,
         numero_oc=numero,
         proveedor_id=body.proveedor_id,
         fecha_entrega=body.fecha_entrega,
@@ -157,7 +164,7 @@ async def create_orden(
 
     items = []
     for item_data in body.items:
-        sku_r = await db.execute(select(SKU).where(SKU.id == item_data.sku_id))
+        sku_r = await db.execute(select(SKU).where(SKU.id == item_data.sku_id, SKU.empresa_id == empresa.id))
         sku = sku_r.scalar_one_or_none()
         if sku is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"SKU {item_data.sku_id} no encontrado")
@@ -175,27 +182,13 @@ async def create_orden(
         items.append(item)
 
     await db.flush()
-
-    prov_obj = (await db.execute(select(Proveedor).where(Proveedor.id == body.proveedor_id))).scalar_one()
-
-    return OrdenResponse(
-        id=orden.id, numero_oc=orden.numero_oc, proveedor_id=orden.proveedor_id,
-        proveedor_nombre=prov_obj.nombre, fecha_emision=orden.fecha_emision,
-        fecha_entrega=orden.fecha_entrega, estado=orden.estado.value, nota=orden.nota,
-        usuario_id=orden.usuario_id, created_at=orden.created_at,
-        items=[ItemOCResponse(
-            id=i.id, sku_id=i.sku_id, sku_codigo=i.sku.codigo_sku,
-            sku_descripcion=i.sku.descripcion,
-            cantidad_solicitada=i.cantidad_solicitada,
-            cantidad_recibida=i.cantidad_recibida,
-            costo_unitario=i.costo_unitario, costo_total=i.costo_total,
-        ) for i in items],
-    )
+    orden.proveedor = prov_obj
+    return _orden_to_response(orden)
 
 
 @router.post("/ordenes/{orden_id}/cancelar")
-async def cancelar_orden(orden_id: int, body: dict = None, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
-    result = await db.execute(select(OrdenCompra).where(OrdenCompra.id == orden_id))
+async def cancelar_orden(orden_id: int, body: dict = None, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), _=Depends(require_admin)):
+    result = await db.execute(select(OrdenCompra).where(OrdenCompra.id == orden_id, OrdenCompra.empresa_id == empresa.id))
     orden = result.scalar_one_or_none()
     if orden is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Orden no encontrada")
@@ -218,13 +211,13 @@ async def recibir_orden(
     orden_id: int,
     body: RecepcionCreate,
     db: AsyncSession = Depends(get_db),
+    empresa: Empresa = Depends(get_current_empresa),
     current_user: Usuario = Depends(get_current_user),
 ):
-    from app.models.compras import ItemRecepcion
-
     try:
         recepcion = await procesar_recepcion(
             db=db,
+            empresa_id=empresa.id,
             orden_id=orden_id,
             bodega_id=body.bodega_id,
             items_recibidos=[it.model_dump() for it in body.items],
@@ -235,8 +228,6 @@ async def recibir_orden(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     await db.flush()
-
-    from app.models.compras import ItemRecepcion as IRModel
 
     recepcion_reloaded = (await db.execute(
         select(RecepcionCompra)
@@ -261,11 +252,10 @@ async def recibir_orden(
 
 
 @router.get("/recepciones", response_model=list[RecepcionResponse])
-async def list_recepciones(db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
-    from app.models.compras import ItemRecepcion
-
+async def list_recepciones(db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa)):
     result = await db.execute(
         select(RecepcionCompra)
+        .where(RecepcionCompra.empresa_id == empresa.id)
         .options(selectinload(RecepcionCompra.items), selectinload(RecepcionCompra.orden))
         .order_by(RecepcionCompra.fecha.desc())
     )
@@ -290,9 +280,8 @@ async def list_recepciones(db: AsyncSession = Depends(get_db), _=Depends(get_cur
 # ═══ SOLICITUDES DE COMPRA ═════════════════════════════════
 
 @router.get("/solicitudes")
-async def list_solicitudes(estado: str | None = None, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
-    from app.models.compras import SolicitudCompra, ItemSolicitudCompra
-    stmt = select(SolicitudCompra).options(
+async def list_solicitudes(estado: str | None = None, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa)):
+    stmt = select(SolicitudCompra).where(SolicitudCompra.empresa_id == empresa.id).options(
         selectinload(SolicitudCompra.usuario),
         selectinload(SolicitudCompra.items).selectinload(ItemSolicitudCompra.sku),
     ).order_by(SolicitudCompra.fecha.desc())
@@ -311,13 +300,13 @@ async def list_solicitudes(estado: str | None = None, db: AsyncSession = Depends
 
 
 @router.post("/solicitudes", status_code=status.HTTP_201_CREATED)
-async def create_solicitud(body: dict, db: AsyncSession = Depends(get_db), current_user: Usuario = Depends(get_current_user)):
-    from app.models.compras import SolicitudCompra, ItemSolicitudCompra
-    result = await db.execute(select(func.count()).select_from(SolicitudCompra))
+async def create_solicitud(body: dict, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), current_user: Usuario = Depends(get_current_user)):
+    result = await db.execute(select(func.count()).select_from(SolicitudCompra).where(SolicitudCompra.empresa_id == empresa.id))
     count = result.scalar() or 0
     numero = f"SC-{count + 1:06d}"
 
     sol = SolicitudCompra(
+        empresa_id=empresa.id,
         numero=numero,
         usuario_id=current_user.id,
         notas=body.get("notas"),
@@ -327,7 +316,7 @@ async def create_solicitud(body: dict, db: AsyncSession = Depends(get_db), curre
 
     items = []
     for it in body.get("items", []):
-        sku = (await db.execute(select(SKU).where(SKU.id == it["sku_id"]))).scalar_one_or_none()
+        sku = (await db.execute(select(SKU).where(SKU.id == it["sku_id"], SKU.empresa_id == empresa.id))).scalar_one_or_none()
         if sku is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"SKU {it['sku_id']} no encontrado")
         item = ItemSolicitudCompra(
@@ -348,9 +337,8 @@ async def create_solicitud(body: dict, db: AsyncSession = Depends(get_db), curre
 
 
 @router.post("/solicitudes/{solicitud_id}/aprobar")
-async def aprobar_solicitud(solicitud_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
-    from app.models.compras import SolicitudCompra
-    result = await db.execute(select(SolicitudCompra).where(SolicitudCompra.id == solicitud_id))
+async def aprobar_solicitud(solicitud_id: int, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), _=Depends(require_admin)):
+    result = await db.execute(select(SolicitudCompra).where(SolicitudCompra.id == solicitud_id, SolicitudCompra.empresa_id == empresa.id))
     sol = result.scalar_one_or_none()
     if sol is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Solicitud no encontrada")
@@ -362,9 +350,8 @@ async def aprobar_solicitud(solicitud_id: int, db: AsyncSession = Depends(get_db
 
 
 @router.post("/solicitudes/{solicitud_id}/rechazar")
-async def rechazar_solicitud(solicitud_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
-    from app.models.compras import SolicitudCompra
-    result = await db.execute(select(SolicitudCompra).where(SolicitudCompra.id == solicitud_id))
+async def rechazar_solicitud(solicitud_id: int, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), _=Depends(require_admin)):
+    result = await db.execute(select(SolicitudCompra).where(SolicitudCompra.id == solicitud_id, SolicitudCompra.empresa_id == empresa.id))
     sol = result.scalar_one_or_none()
     if sol is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Solicitud no encontrada")
@@ -376,11 +363,9 @@ async def rechazar_solicitud(solicitud_id: int, db: AsyncSession = Depends(get_d
 
 
 @router.post("/solicitudes/{solicitud_id}/convertir")
-async def convertir_solicitud(solicitud_id: int, db: AsyncSession = Depends(get_db), current_user: Usuario = Depends(get_current_user)):
-    from app.models.compras import SolicitudCompra, ItemSolicitudCompra
-
+async def convertir_solicitud(solicitud_id: int, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), current_user: Usuario = Depends(get_current_user)):
     result = await db.execute(
-        select(SolicitudCompra).where(SolicitudCompra.id == solicitud_id)
+        select(SolicitudCompra).where(SolicitudCompra.id == solicitud_id, SolicitudCompra.empresa_id == empresa.id)
         .options(selectinload(SolicitudCompra.items).selectinload(ItemSolicitudCompra.sku))
     )
     sol = result.scalar_one_or_none()
@@ -389,15 +374,16 @@ async def convertir_solicitud(solicitud_id: int, db: AsyncSession = Depends(get_
     if sol.estado != "aprobada":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo solicitudes aprobadas pueden convertirse")
 
-    numero = await generar_numero_oc(db)
+    numero = await generar_numero_oc(db, empresa.id)
 
-    # Usar el primer proveedor activo disponible
-    prov_result = await db.execute(select(Proveedor).where(Proveedor.activo == True).limit(1))
+    # Usar el primer proveedor activo disponible de la empresa
+    prov_result = await db.execute(select(Proveedor).where(Proveedor.empresa_id == empresa.id, Proveedor.activo.is_(True)).limit(1))
     proveedor = prov_result.scalar_one_or_none()
     if proveedor is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No hay proveedores activos")
 
     orden = OrdenCompra(
+        empresa_id=empresa.id,
         numero_oc=numero,
         proveedor_id=proveedor.id,
         usuario_id=current_user.id,
@@ -421,9 +407,8 @@ async def convertir_solicitud(solicitud_id: int, db: AsyncSession = Depends(get_
 # ═══ PRECIOS PROVEEDOR ═══════════════════════════════════
 
 @router.get("/precios")
-async def list_precios(proveedor_id: int | None = None, sku_id: int | None = None, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
-    from app.models.compras import PrecioProveedor
-    stmt = select(PrecioProveedor).options(selectinload(PrecioProveedor.sku), selectinload(PrecioProveedor.proveedor))
+async def list_precios(proveedor_id: int | None = None, sku_id: int | None = None, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa)):
+    stmt = select(PrecioProveedor).where(PrecioProveedor.empresa_id == empresa.id).options(selectinload(PrecioProveedor.sku), selectinload(PrecioProveedor.proveedor))
     if proveedor_id:
         stmt = stmt.where(PrecioProveedor.proveedor_id == proveedor_id)
     if sku_id:
@@ -437,10 +422,10 @@ async def list_precios(proveedor_id: int | None = None, sku_id: int | None = Non
 
 
 @router.post("/precios")
-async def upsert_precio(body: dict, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
-    from app.models.compras import PrecioProveedor
+async def upsert_precio(body: dict, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), _=Depends(require_admin)):
     result = await db.execute(
         select(PrecioProveedor).where(
+            PrecioProveedor.empresa_id == empresa.id,
             PrecioProveedor.proveedor_id == body["proveedor_id"],
             PrecioProveedor.sku_id == body["sku_id"],
         )
@@ -450,16 +435,20 @@ async def upsert_precio(body: dict, db: AsyncSession = Depends(get_db), _=Depend
         p.costo_unitario = body["costo_unitario"]
         p.ultima_actualizacion = datetime.now(timezone.utc)
     else:
-        p = PrecioProveedor(**body)
+        p = PrecioProveedor(
+            empresa_id=empresa.id,
+            proveedor_id=body["proveedor_id"],
+            sku_id=body["sku_id"],
+            costo_unitario=body["costo_unitario"],
+        )
         db.add(p)
     await db.flush()
     return {"message": "Precio actualizado", "id": p.id, "costo_unitario": p.costo_unitario}
 
 
 @router.delete("/precios/{precio_id}")
-async def delete_precio(precio_id: int, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
-    from app.models.compras import PrecioProveedor
-    result = await db.execute(select(PrecioProveedor).where(PrecioProveedor.id == precio_id))
+async def delete_precio(precio_id: int, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), _=Depends(require_admin)):
+    result = await db.execute(select(PrecioProveedor).where(PrecioProveedor.id == precio_id, PrecioProveedor.empresa_id == empresa.id))
     p = result.scalar_one_or_none()
     if p is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Precio no encontrado")
@@ -471,17 +460,15 @@ async def delete_precio(precio_id: int, db: AsyncSession = Depends(get_db), _=De
 # ═══ DEVOLUCIONES COMPRA ═════════════════════════════════
 
 @router.post("/ordenes/{orden_id}/devolver")
-async def devolver_orden(orden_id: int, body: dict, db: AsyncSession = Depends(get_db), current_user: Usuario = Depends(get_current_user)):
-    from app.models.compras import DevolucionCompra, ItemDevolucionCompra
-
-    result = await db.execute(select(OrdenCompra).where(OrdenCompra.id == orden_id))
+async def devolver_orden(orden_id: int, body: dict, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), current_user: Usuario = Depends(get_current_user)):
+    result = await db.execute(select(OrdenCompra).where(OrdenCompra.id == orden_id, OrdenCompra.empresa_id == empresa.id))
     orden = result.scalar_one_or_none()
     if orden is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Orden no encontrada")
     if orden.estado.value not in ("parcial", "completa"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo se pueden devolver órdenes recibidas")
 
-    dev = DevolucionCompra(orden_id=orden_id, nota=body.get("nota"), usuario_id=current_user.id)
+    dev = DevolucionCompra(empresa_id=empresa.id, orden_id=orden_id, nota=body.get("nota"), usuario_id=current_user.id)
     db.add(dev)
     await db.flush()
 
@@ -498,6 +485,7 @@ async def devolver_orden(orden_id: int, body: dict, db: AsyncSession = Depends(g
         item_oc.cantidad_recibida -= it["cantidad_devuelta"]
 
         mov = MovimientoInventario(
+            empresa_id=empresa.id,
             tipo=TipoMovimiento.SALIDA,
             motivo=MotivoMovimiento.DEVOLUCION_PROVEEDOR,
             sku_id=item_oc.sku_id,
@@ -509,7 +497,7 @@ async def devolver_orden(orden_id: int, body: dict, db: AsyncSession = Depends(g
             usuario_id=current_user.id,
         )
         db.add(mov)
-        await actualizar_stock(db, item_oc.sku_id, body.get("bodega_id", 1), it["cantidad_devuelta"], TipoMovimiento.SALIDA)
+        await actualizar_stock(db, empresa.id, item_oc.sku_id, body.get("bodega_id", 1), it["cantidad_devuelta"], TipoMovimiento.SALIDA)
 
     if orden.estado == EstadoOrden.COMPLETA:
         orden.estado = EstadoOrden.PARCIAL
@@ -518,10 +506,9 @@ async def devolver_orden(orden_id: int, body: dict, db: AsyncSession = Depends(g
 
 
 @router.get("/devoluciones")
-async def list_devoluciones(db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
-    from app.models.compras import DevolucionCompra, ItemDevolucionCompra
+async def list_devoluciones(db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa)):
     result = await db.execute(
-        select(DevolucionCompra).options(
+        select(DevolucionCompra).where(DevolucionCompra.empresa_id == empresa.id).options(
             selectinload(DevolucionCompra.orden),
             selectinload(DevolucionCompra.items).selectinload(ItemDevolucionCompra.item_orden),
         ).order_by(DevolucionCompra.fecha.desc())
@@ -536,17 +523,13 @@ async def list_devoluciones(db: AsyncSession = Depends(get_db), _=Depends(get_cu
             items_resp.append({"id": it.id, "sku_codigo": sku.codigo_sku, "cantidad_devuelta": it.cantidad_devuelta})
         resp.append({"id": d.id, "orden_id": d.orden_id, "numero_oc": d.orden.numero_oc, "fecha": d.fecha, "nota": d.nota, "items": items_resp})
     return resp
-# Ensure these imports at router level
-from app.models.inventario import MovimientoInventario, MotivoMovimiento, TipoMovimiento
-from app.services.inventario import actualizar_stock
-from datetime import timezone
+
 
 # ═══ COTIZACIONES ═══════════════════════════════════════
 
 @router.get("/cotizaciones")
-async def list_cotizaciones(estado: str | None = None, db: AsyncSession = Depends(get_db), _=Depends(get_current_user)):
-    from app.models.compras import CotizacionCompra, ItemCotizacion, PropuestaCotizacion, ItemPropuesta
-    stmt = select(CotizacionCompra).options(
+async def list_cotizaciones(estado: str | None = None, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa)):
+    stmt = select(CotizacionCompra).where(CotizacionCompra.empresa_id == empresa.id).options(
         selectinload(CotizacionCompra.usuario),
         selectinload(CotizacionCompra.items).selectinload(ItemCotizacion.sku),
         selectinload(CotizacionCompra.propuestas).options(
@@ -570,17 +553,17 @@ async def list_cotizaciones(estado: str | None = None, db: AsyncSession = Depend
 
 
 @router.post("/cotizaciones", status_code=status.HTTP_201_CREATED)
-async def create_cotizacion(body: dict, db: AsyncSession = Depends(get_db), current_user: Usuario = Depends(get_current_user)):
-    from app.models.compras import CotizacionCompra, ItemCotizacion
-    result = await db.execute(select(func.count()).select_from(CotizacionCompra))
+async def create_cotizacion(body: dict, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), current_user: Usuario = Depends(get_current_user)):
+    result = await db.execute(select(func.count()).select_from(CotizacionCompra).where(CotizacionCompra.empresa_id == empresa.id))
     count = result.scalar() or 0
     numero = f"COT-{count + 1:06d}"
-    cot = CotizacionCompra(numero=numero, usuario_id=current_user.id, notas=body.get("notas"))
+    cot = CotizacionCompra(empresa_id=empresa.id, numero=numero, usuario_id=current_user.id, notas=body.get("notas"))
     db.add(cot)
     await db.flush()
     for it in body.get("items", []):
-        sku = (await db.execute(select(SKU).where(SKU.id == it["sku_id"]))).scalar_one_or_none()
-        if sku is None: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"SKU {it['sku_id']} no encontrado")
+        sku = (await db.execute(select(SKU).where(SKU.id == it["sku_id"], SKU.empresa_id == empresa.id))).scalar_one_or_none()
+        if sku is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"SKU {it['sku_id']} no encontrado")
         item = ItemCotizacion(cotizacion_id=cot.id, sku_id=it["sku_id"], cantidad=it["cantidad"])
         db.add(item)
     await db.flush()
@@ -588,13 +571,17 @@ async def create_cotizacion(body: dict, db: AsyncSession = Depends(get_db), curr
 
 
 @router.post("/cotizaciones/{cotizacion_id}/propuestas", status_code=status.HTTP_201_CREATED)
-async def registrar_propuesta(cotizacion_id: int, body: dict, db: AsyncSession = Depends(get_db), _=Depends(require_admin)):
-    from app.models.compras import CotizacionCompra, PropuestaCotizacion, ItemPropuesta, ItemCotizacion
-    cot = (await db.execute(select(CotizacionCompra).where(CotizacionCompra.id == cotizacion_id))).scalar_one_or_none()
-    if cot is None: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cotización no encontrada")
+async def registrar_propuesta(cotizacion_id: int, body: dict, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), _=Depends(require_admin)):
+    cot = (await db.execute(select(CotizacionCompra).where(CotizacionCompra.id == cotizacion_id, CotizacionCompra.empresa_id == empresa.id))).scalar_one_or_none()
+    if cot is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cotización no encontrada")
     if cot.estado not in ("pendiente", "en_proceso"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No se pueden agregar propuestas")
-    prop = PropuestaCotizacion(cotizacion_id=cotizacion_id, proveedor_id=body["proveedor_id"], notas=body.get("notas"))
+    # Verificar que el proveedor pertenece a la empresa
+    prov = (await db.execute(select(Proveedor).where(Proveedor.id == body["proveedor_id"], Proveedor.empresa_id == empresa.id))).scalar_one_or_none()
+    if prov is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Proveedor no encontrado")
+    prop = PropuestaCotizacion(empresa_id=empresa.id, cotizacion_id=cotizacion_id, proveedor_id=body["proveedor_id"], notas=body.get("notas"))
     db.add(prop)
     await db.flush()
     total = 0.0
@@ -610,28 +597,31 @@ async def registrar_propuesta(cotizacion_id: int, body: dict, db: AsyncSession =
 
 
 @router.post("/cotizaciones/{cotizacion_id}/adjudicar")
-async def adjudicar_cotizacion(cotizacion_id: int, body: dict, db: AsyncSession = Depends(get_db), current_user: Usuario = Depends(get_current_user)):
-    from app.models.compras import CotizacionCompra, PropuestaCotizacion, ItemPropuesta
+async def adjudicar_cotizacion(cotizacion_id: int, body: dict, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), current_user: Usuario = Depends(get_current_user)):
     cot = (await db.execute(
-        select(CotizacionCompra).where(CotizacionCompra.id == cotizacion_id)
+        select(CotizacionCompra).where(CotizacionCompra.id == cotizacion_id, CotizacionCompra.empresa_id == empresa.id)
         .options(selectinload(CotizacionCompra.items), selectinload(CotizacionCompra.propuestas).selectinload(PropuestaCotizacion.items))
     )).scalar_one_or_none()
-    if cot is None: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cotización no encontrada")
-    if cot.estado == "adjudicada": raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ya está adjudicada")
+    if cot is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cotización no encontrada")
+    if cot.estado == "adjudicada":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ya está adjudicada")
 
     propuesta_id = body["propuesta_id"]
     prop = next((p for p in cot.propuestas if p.id == propuesta_id), None)
-    if prop is None: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Propuesta no encontrada")
+    if prop is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Propuesta no encontrada")
 
-    numero = await generar_numero_oc(db)
-    orden = OrdenCompra(numero_oc=numero, proveedor_id=prop.proveedor_id, usuario_id=current_user.id,
+    numero = await generar_numero_oc(db, empresa.id)
+    orden = OrdenCompra(empresa_id=empresa.id, numero_oc=numero, proveedor_id=prop.proveedor_id, usuario_id=current_user.id,
                          nota=f"Generada desde cotización {cot.numero}")
     db.add(orden)
     await db.flush()
 
     for ip in prop.items:
         item_cot = next((ic for ic in cot.items if ic.id == ip.item_cotizacion_id), None)
-        if item_cot is None: continue
+        if item_cot is None:
+            continue
         item_oc = ItemOrdenCompra(orden_id=orden.id, sku_id=item_cot.sku_id,
                                    cantidad_solicitada=item_cot.cantidad, costo_unitario=ip.costo_unitario,
                                    costo_total=item_cot.cantidad * ip.costo_unitario)
