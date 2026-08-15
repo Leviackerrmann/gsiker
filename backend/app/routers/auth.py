@@ -52,6 +52,12 @@ async def register_empresa(body: RegistroEmpresaRequest, db: AsyncSession = Depe
     Reemplaza el seed hardcodeado admin/admin2026. Deja al admin logueado
     devolviendo su token de acceso.
     """
+    if not settings.REGISTRATION_ENABLED:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="El registro de nuevas empresas está deshabilitado temporalmente.",
+        )
+
     validate_password_strength(body.admin_password)
 
     dup_empresa = await db.execute(select(Empresa).where(Empresa.nombre == body.empresa_nombre))
@@ -94,6 +100,13 @@ async def register_empresa(body: RegistroEmpresaRequest, db: AsyncSession = Depe
 
     token = create_access_token({"sub": admin.id, "empresa_id": admin.empresa_id, "rol": admin.rol.value})
     return TokenResponse(access_token=token)
+
+
+@router.get("/registration-status")
+async def registration_status():
+    """Estado público del onboarding: el frontend lo usa para mostrar u ocultar
+    el registro. Solo devuelve un booleano; no expone nada sensible."""
+    return {"enabled": settings.REGISTRATION_ENABLED}
 
 
 @router.post("/login", response_model=LoginResponse)

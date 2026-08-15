@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     AUDIT_ENABLED: bool = True
     # Política de contraseñas.
     PASSWORD_MIN_LENGTH: int = 8
+    # Onboarding público de nuevas empresas. FALSE = registro cerrado (estado
+    # por defecto mientras el sistema está en preparación). Para reabrirlo:
+    # REGISTRATION_ENABLED=true en el .env + reiniciar backend.
+    REGISTRATION_ENABLED: bool = False
     # Rate-limiting de autenticación (anti fuerza bruta).
     RATE_LIMIT_ENABLED: bool = True
     LOGIN_MAX_ATTEMPTS: int = 10  # por (IP, usuario) dentro de la ventana

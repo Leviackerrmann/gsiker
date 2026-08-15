@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useToast } from "../components/Toast";
 import { useNodeNetwork, AUTH_CSS } from "../lib/authUi";
+import api from "../lib/api";
 
 export default function Login() {
   const [username, setUsername] = useState("");
@@ -10,6 +11,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [registroHabilitado, setRegistroHabilitado] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
@@ -26,6 +28,14 @@ export default function Login() {
         if (data.r) setRememberMe(true);
       }
     } catch {}
+  }, []);
+
+  // El registro público puede estar cerrado (sistema en preparación). Solo
+  // mostramos el enlace si el backend lo reporta habilitado.
+  useEffect(() => {
+    api.get("/auth/registration-status")
+      .then((r) => setRegistroHabilitado(Boolean(r.data?.enabled)))
+      .catch(() => setRegistroHabilitado(false));
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -144,9 +154,11 @@ export default function Login() {
                 )}
               </button>
 
-              <div className="signup-row fade-up d-5">
-                ¿No tienes cuenta? <Link to="/register">Regístrala gratis</Link>
-              </div>
+              {registroHabilitado && (
+                <div className="signup-row fade-up d-5">
+                  ¿No tienes cuenta? <Link to="/register">Regístrala gratis</Link>
+                </div>
+              )}
             </form>
 
             <div className="form-footer">© {new Date().getFullYear()} gsiker · v1.0</div>

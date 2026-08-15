@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.inventario import Stock
 from app.models.pos import EstadoVentaPOS, Pago, VentaPOS
 from app.models.sku import SKU
+from app.models.ventas import Cliente
 from app.services import cobranza as cobranza_service
 
 
@@ -32,8 +33,19 @@ TOOLS = [
     },
     {
         "name": "estado_cobranza",
-        "description": "Resumen de la cartera por cobrar (fiado): total por cobrar, monto vencido y número de cuentas abiertas. Úsalo cuando pregunten cuánto les deben o el estado del fiado.",
+        "description": "Resumen GENERAL de la cartera por cobrar (fiado) de todo el negocio: total por cobrar, monto vencido y número de cuentas abiertas. Úsalo cuando pregunten en general cuánto les deben o el estado del fiado, SIN mencionar a un cliente concreto. Para la deuda de un cliente específico usa 'deuda_cliente'.",
         "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "deuda_cliente",
+        "description": "Cuánto debe un cliente ESPECÍFICO (su cuenta por cobrar / fiado), buscándolo por nombre o código. Devuelve el saldo total pendiente, la antigüedad de la deuda (aging) y el detalle de sus cuentas abiertas. Úsalo siempre que pregunten por la deuda de una persona o cliente concreto, por ejemplo '¿cuánto me debe Miguel Torres?' o '¿qué le debo cobrar a Juan?'.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "consulta": {"type": "string", "description": "Nombre o código del cliente a buscar"}
+            },
+            "required": ["consulta"],
+        },
     },
     {
         "name": "buscar_producto",
@@ -92,6 +104,56 @@ async def _estado_cobranza(db: AsyncSession, empresa_id: int, **_: object) -> di
     return await cobranza_service.resumen_cobranza(db, empresa_id)
 
 
+async def _deuda_cliente(db: AsyncSession, empresa_id: int, consulta: str = "", **_: object) -> dict:
+    termino = consulta.strip()
+    if not termino:
+        return {"encontrado": False, "mensaje": "Indica el nombre o código del cliente a consultar."}
+
+    q = f"%{termino}%"
+    result = await db.execute(
+        select(Cliente)
+        .where(
+            Cliente.empresa_id == empresa_id,
+            (Cliente.nombre.ilike(q)) | (Cliente.codigo.ilike(q)),
+        )
+        .order_by(Cliente.nombre)
+        .limit(10)
+    )
+    clientes = list(result.scalars().all())
+
+    if not clientes:
+        return {"encontrado": False, "mensaje": f"No hay ningún cliente que coincida con '{termino}'."}
+    if len(clientes) > 1:
+        return {
+            "encontrado": False,
+            "coincidencias": [{"nombre": c.nombre, "codigo": c.codigo} for c in clientes],
+            "mensaje": "Hay varios clientes que coinciden; pide que especifique cuál.",
+        }
+
+    cliente = clientes[0]
+    estado = await cobranza_service.estado_cuenta_cliente(db, empresa_id, cliente.id)
+    cuentas = [
+        {
+            "concepto": c.concepto,
+            "saldo_pendiente": round(c.saldo_pendiente, 2),
+            "monto_total": round(c.monto_total, 2),
+            "estado": c.estado.value if hasattr(c.estado, "value") else str(c.estado),
+            "fecha": c.fecha,
+        }
+        for c in estado["cuentas"]
+        if c.saldo_pendiente > 0.005
+    ]
+    return {
+        "encontrado": True,
+        "cliente": cliente.nombre,
+        "codigo": cliente.codigo,
+        "saldo_total": estado["saldo_total"],
+        "num_cuentas_abiertas": len(cuentas),
+        "aging": estado["aging"],
+        "cuentas": cuentas,
+    }
+
+
 async def _buscar_producto(db: AsyncSession, empresa_id: int, consulta: str = "", **_: object) -> dict:
     q = f"%{consulta.strip()}%"
     result = await db.execute(
@@ -113,6 +175,7 @@ _EXECUTORS = {
     "resumen_ventas_hoy": _resumen_ventas_hoy,
     "alertas_stock": _alertas_stock,
     "estado_cobranza": _estado_cobranza,
+    "deuda_cliente": _deuda_cliente,
     "buscar_producto": _buscar_producto,
 }
 

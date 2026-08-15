@@ -47,7 +47,7 @@ const singleItems: NavItem[] = [
 
 const iconStyle: React.CSSProperties = { width: 18, textAlign: "center", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
 
-export default function Sidebar() {
+export default function Sidebar({ mobile = false, open = false, onClose }: { mobile?: boolean; open?: boolean; onClose?: () => void }) {
   const { user, empresa, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -68,7 +68,9 @@ export default function Sidebar() {
       width: 260, minHeight: "100vh", background: "var(--bg-sidebar)",
       borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column",
       position: "fixed", left: 0, top: 0, bottom: 0, zIndex: 50, overflow: "hidden",
-      transition: "var(--transition)",
+      transform: mobile && !open ? "translateX(-100%)" : "translateX(0)",
+      transition: "transform .3s ease",
+      boxShadow: mobile && open ? "0 0 40px rgba(0,0,0,0.4)" : undefined,
       backdropFilter: "var(--sidebar-blur)", WebkitBackdropFilter: "var(--sidebar-blur)",
     }}>
       <div style={{ padding: "24px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12, transition: "border-color .5s ease" }}>
@@ -88,7 +90,7 @@ export default function Sidebar() {
         {singleItems.map((item) => {
           const active = isItemActive(item.to);
           return (
-            <NavLink key={item.to} to={item.to} style={{
+            <NavLink key={item.to} to={item.to} onClick={() => { if (mobile) onClose?.(); }} style={{
               display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 8,
               color: active ? "var(--accent)" : "var(--text-secondary)", fontSize: 14, fontWeight: 500,
               background: active ? "var(--accent-soft)" : "transparent",
@@ -128,7 +130,7 @@ export default function Sidebar() {
                   {section.items.map((item) => {
                     const active = isItemActive(item.to);
                     return (
-                      <NavLink key={item.to} to={item.to} style={{
+                      <NavLink key={item.to} to={item.to} onClick={() => { if (mobile) onClose?.(); }} style={{
                         display: "flex", alignItems: "center", gap: 12, padding: "8px 14px 8px 24px",
                         borderRadius: 8, color: active ? "var(--accent)" : "var(--text-secondary)",
                         fontSize: 13, fontWeight: active ? 600 : 400,

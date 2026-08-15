@@ -5,6 +5,15 @@ interface Usuario {
   id: number; username: string; email: string | null; nombre_completo: string; rol: string; activo: boolean; fecha_creacion: string;
 }
 
+// Extrae un mensaje legible del error de la API: `detail` puede ser un string
+// (errores de negocio) o una lista (validación 422 de FastAPI).
+function mensajeError(err: any): string {
+  const d = err?.response?.data?.detail;
+  if (typeof d === "string") return d;
+  if (Array.isArray(d)) return d.map((e: any) => e?.msg || String(e)).join("; ");
+  return err?.message || "No se pudo completar la operación.";
+}
+
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,10 +36,10 @@ export default function UsuariosPage() {
       if (editing) {
         await api.put(`/usuarios/${editing.id}`, { nombre_completo: form.nombre_completo, email: form.email || null, rol: form.rol });
       } else {
-        await api.post("/usuarios", form);
+        await api.post("/usuarios", { ...form, email: form.email.trim() || null });
       }
       setShowForm(false); reset(); load();
-    } catch (err: any) { setError(err.response?.data?.detail || "Error"); }
+    } catch (err: any) { setError(mensajeError(err)); }
   };
 
   const toggleActivo = async (u: Usuario) => { await api.put(`/usuarios/${u.id}`, { activo: !u.activo }); load(); };
@@ -48,7 +57,11 @@ export default function UsuariosPage() {
           {error && <div style={{ background: "var(--danger-bg)", color: "var(--danger)", padding: "8px 12px", borderRadius: "var(--radius-sm)", marginBottom: 12, fontSize: 13 }}>{error}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
             <div><label style={lbl}>Username *</label><input value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} style={inp} required disabled={!!editing} /></div>
-            <div><label style={lbl}>Contraseña {editing ? "(dejar vacío)" : "*"}</label><input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} style={inp} required={!editing} /></div>
+            <div>
+              <label style={lbl}>Contraseña {editing ? "(dejar vacío)" : "*"}</label>
+              <input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} style={inp} required={!editing} />
+              {!editing && <span style={{ display: "block", marginTop: 4, fontSize: 11, color: "var(--text-muted)" }}>Mínimo 8 caracteres, con al menos una letra y un número.</span>}
+            </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
             <div><label style={lbl}>Nombre completo *</label><input value={form.nombre_completo} onChange={(e) => setForm({ ...form, nombre_completo: e.target.value })} style={inp} required /></div>
@@ -59,7 +72,6 @@ export default function UsuariosPage() {
             <select value={form.rol} onChange={(e) => setForm({ ...form, rol: e.target.value })} style={inp}>
               <option value="operador">Operador</option>
               <option value="admin">Admin</option>
-              <option value="superadmin">Superadmin</option>
             </select>
           </div>
           <div style={{ display: "flex", gap: 8 }}>

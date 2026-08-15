@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { useNodeNetwork, AUTH_CSS } from "../lib/authUi";
+import api from "../lib/api";
 import type { RegimenFiscal } from "../types";
 
 export default function Register() {
@@ -14,10 +15,18 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // null = aún consultando; false = registro cerrado; true = habilitado.
+  const [habilitado, setHabilitado] = useState<boolean | null>(null);
   const { registerEmpresa } = useAuth();
   const navigate = useNavigate();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useNodeNetwork(canvasRef);
+
+  useEffect(() => {
+    api.get("/auth/registration-status")
+      .then((r) => setHabilitado(Boolean(r.data?.enabled)))
+      .catch(() => setHabilitado(false));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +55,47 @@ export default function Register() {
       setLoading(false);
     }
   };
+
+  // Mientras se consulta el estado, evitamos parpadear el formulario.
+  if (habilitado === null) {
+    return (
+      <div className="nlogin">
+        <style>{AUTH_CSS}</style>
+        <div className="container" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span className="nl-loader" />
+        </div>
+      </div>
+    );
+  }
+
+  // Registro cerrado: el sistema está en preparación. Aunque alguien llegue
+  // directo a /register, el backend igual rechaza el alta con 403.
+  if (habilitado === false) {
+    return (
+      <div className="nlogin">
+        <style>{AUTH_CSS}</style>
+        <div className="container" style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
+          <div className="form-container" style={{ textAlign: "center", maxWidth: 440 }}>
+            <div className="brand-logo fade-up d-1" style={{ justifyContent: "center", marginBottom: 24 }}>
+              <div className="logo-icon">g</div>
+              <div className="logo-text">gsiker</div>
+            </div>
+            <div className="feature-icon fade-up d-1" style={{ margin: "0 auto 16px", width: 56, height: 56, fontSize: 22 }}>
+              <i className="fa-solid fa-lock" />
+            </div>
+            <h2 className="fade-up d-2" style={{ marginBottom: 8 }}>Registro no disponible</h2>
+            <p className="fade-up d-2" style={{ color: "var(--nl-text-dim, #64748b)", marginBottom: 24 }}>
+              El registro de nuevos negocios está deshabilitado temporalmente mientras terminamos de preparar gsiker. Muy pronto podrás crear tu cuenta.
+            </p>
+            <div className="signup-row fade-up d-3">
+              ¿Ya tienes cuenta? <Link to="/login">Inicia sesión</Link>
+            </div>
+            <div className="form-footer" style={{ marginTop: 24 }}>© {new Date().getFullYear()} gsiker · v1.0</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="nlogin">

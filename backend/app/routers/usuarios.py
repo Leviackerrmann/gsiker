@@ -46,20 +46,24 @@ async def create_usuario(
 ):
     validate_password_strength(body.password)
 
+    # Email vacío → NULL. La columna es UNIQUE y admite múltiples NULL, pero no
+    # múltiples cadenas vacías; sin esto, el 2º usuario sin email choca (500).
+    email = (body.email or "").strip() or None
+
     # username y email son únicos globalmente en el esquema actual.
     existing = await db.execute(select(Usuario).where(Usuario.username == body.username))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El username ya existe")
 
-    if body.email:
-        email_check = await db.execute(select(Usuario).where(Usuario.email == body.email))
+    if email:
+        email_check = await db.execute(select(Usuario).where(Usuario.email == email))
         if email_check.scalar_one_or_none():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El email ya existe")
 
     user = Usuario(
         empresa_id=empresa.id,
         username=body.username,
-        email=body.email,
+        email=email,
         password_hash=hash_password(body.password),
         nombre_completo=body.nombre_completo,
         rol=_parse_rol_empresa(body.rol),
@@ -88,7 +92,14 @@ async def update_usuario(
     if body.nombre_completo is not None:
         user.nombre_completo = body.nombre_completo
     if body.email is not None:
-        user.email = body.email
+        nuevo_email = body.email.strip() or None  # vacío → NULL (ver create_usuario)
+        if nuevo_email:
+            dup = await db.execute(
+                select(Usuario).where(Usuario.email == nuevo_email, Usuario.id != user.id)
+            )
+            if dup.scalar_one_or_none():
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El email ya existe")
+        user.email = nuevo_email
     if body.rol is not None:
         user.rol = _parse_rol_empresa(body.rol)
     if body.activo is not None:
