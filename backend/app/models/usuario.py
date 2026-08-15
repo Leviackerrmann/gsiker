@@ -30,4 +30,8 @@ class Usuario(Base):
     nombre_completo: Mapped[str] = mapped_column(String(200), nullable=False)
     rol: Mapped[RolUsuario] = mapped_column(Enum(RolUsuario), default=RolUsuario.OPERADOR, nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    # 2FA (TOTP). El secreto se guarda al iniciar el alta; `totp_enabled` pasa a
+    # True solo tras verificar el primer código. El login exige 2FA si está True.
+    totp_secret: Mapped[str] = mapped_column(String(64), nullable=True)
+    totp_enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

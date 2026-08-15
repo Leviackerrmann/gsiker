@@ -21,6 +21,7 @@ export interface Empresa {
   email: string | null;
   regimen_fiscal: RegimenFiscal;
   moneda: string;
+  tipo_cambio_usd: number;
   logo_url: string | null;
   plan_id: number | null;
   activa: boolean;

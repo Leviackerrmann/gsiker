@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import api from "../../lib/api";
 import Modal from "../../components/Modal";
 import { useToast } from "../../components/Toast";
+import { formatMoney } from "../../lib/money";
 
 interface Factura {
   id: number; numero: string; pedido_id: number; pedido_numero: string;
   cliente_nombre: string; fecha_emision: string; fecha_vencimiento: string | null;
-  subtotal: number; impuesto_porcentaje: number; impuesto_total: number; total: number;
+  moneda: string; subtotal: number; impuesto_porcentaje: number; impuesto_total: number; total: number;
   estado: string; notas: string | null;
 }
 
@@ -73,9 +74,9 @@ export default function FacturasPage() {
                   <td style={td}>{f.pedido_numero}</td>
                   <td style={td}>{f.cliente_nombre}</td>
                   <td style={td}>{new Date(f.fecha_emision).toLocaleDateString()}</td>
-                  <td style={{ ...td, textAlign: "right" }}>${f.subtotal.toFixed(2)}</td>
-                  <td style={{ ...td, textAlign: "right" }}>${f.impuesto_total.toFixed(2)}</td>
-                  <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>${f.total.toFixed(2)}</td>
+                  <td style={{ ...td, textAlign: "right" }}>{formatMoney(f.subtotal, f.moneda)}</td>
+                  <td style={{ ...td, textAlign: "right" }}>{formatMoney(f.impuesto_total, f.moneda)}</td>
+                  <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{formatMoney(f.total, f.moneda)}</td>
                   <td style={td}>
                     <span style={{
                       fontWeight: 600, fontSize: 12, padding: "3px 10px", borderRadius: 999,
@@ -124,8 +125,8 @@ export default function FacturasPage() {
                     <td style={td}>{it.sku_codigo}</td>
                     <td style={td}>{it.sku_descripcion}</td>
                     <td style={{ ...td, textAlign: "right" }}>{it.cantidad.toLocaleString()}</td>
-                    <td style={{ ...td, textAlign: "right" }}>${it.precio_unitario.toFixed(2)}</td>
-                    <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>${it.precio_total.toFixed(2)}</td>
+                    <td style={{ ...td, textAlign: "right" }}>{formatMoney(it.precio_unitario, detail.moneda)}</td>
+                    <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{formatMoney(it.precio_total, detail.moneda)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -134,15 +135,15 @@ export default function FacturasPage() {
             <div style={{ borderTop: "2px solid #e5e7eb", paddingTop: 12 }}>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4, fontSize: 13 }}>
                 <span style={{ color: "var(--text-secondary)", marginRight: 40 }}>Subtotal:</span>
-                <span style={{ fontWeight: 600 }}>${detail.subtotal.toFixed(2)}</span>
+                <span style={{ fontWeight: 600 }}>{formatMoney(detail.subtotal, detail.moneda)}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 4, fontSize: 13 }}>
                 <span style={{ color: "var(--text-secondary)", marginRight: 40 }}>IVA ({detail.impuesto_porcentaje}%):</span>
-                <span style={{ fontWeight: 600 }}>${detail.impuesto_total.toFixed(2)}</span>
+                <span style={{ fontWeight: 600 }}>{formatMoney(detail.impuesto_total, detail.moneda)}</span>
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", fontSize: 16 }}>
                 <span style={{ color: "var(--text-secondary)", marginRight: 40 }}>Total:</span>
-                <span style={{ fontWeight: 700, color: "var(--primary)" }}>${detail.total.toFixed(2)}</span>
+                <span style={{ fontWeight: 700, color: "var(--primary)" }}>{formatMoney(detail.total, detail.moneda)}</span>
               </div>
             </div>
 

@@ -7,7 +7,7 @@ from app.dependencies import get_current_empresa, require_admin
 from app.models.empresa import Empresa
 from app.models.usuario import RolUsuario, Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioResponse, UsuarioUpdate
-from app.utils.security import hash_password
+from app.utils.security import hash_password, validate_password_strength
 
 router = APIRouter(prefix="/api/usuarios", tags=["usuarios"])
 
@@ -44,6 +44,8 @@ async def create_usuario(
     empresa: Empresa = Depends(get_current_empresa),
     _: Usuario = Depends(require_admin),
 ):
+    validate_password_strength(body.password)
+
     # username y email son únicos globalmente en el esquema actual.
     existing = await db.execute(select(Usuario).where(Usuario.username == body.username))
     if existing.scalar_one_or_none():

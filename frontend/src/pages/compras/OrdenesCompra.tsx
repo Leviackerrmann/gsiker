@@ -5,10 +5,12 @@ import SearchableSelect from "../../components/SearchableSelect";
 import Badge from "../../components/Badge";
 
 import { useToast } from "../../components/Toast";
-interface Proveedor { id: number; codigo: string; nombre: string; activo: boolean; }
+import { useAuth } from "../../contexts/AuthContext";
+import { MONEDAS, formatMoney } from "../../lib/money";
+interface Proveedor { id: number; codigo: string; nombre: string; moneda: string; activo: boolean; }
 interface SKUItem { id: number; codigo_sku: string; descripcion: string; costo_unitario: number; }
 interface ItemOC { id: number; sku_id: number; sku_codigo: string; sku_descripcion: string; cantidad_solicitada: number; cantidad_recibida: number; costo_unitario: number; costo_total: number; }
-interface Orden { id: number; numero_oc: string; proveedor_id: number; proveedor_nombre: string; fecha_emision: string; fecha_entrega: string | null; estado: string; nota: string | null; items: ItemOC[]; }
+interface Orden { id: number; numero_oc: string; proveedor_id: number; proveedor_nombre: string; fecha_emision: string; fecha_entrega: string | null; estado: string; moneda: string; tipo_cambio: number; nota: string | null; items: ItemOC[]; }
 interface Bodega { id: number; nombre: string; }
 
 const estadoColors: Record<string, string> = { pendiente: "#f59e0b", parcial: "#3b82f6", completa: "#16a34a", cancelada: "#dc2626" };
@@ -30,7 +32,10 @@ export default function OrdenesCompraPage() {
   const [confirmModal, setConfirmModal] = useState<{ title: string; msg: string; action: () => void; hasInput?: boolean; inputLabel?: string; onConfirmInput?: (v: string) => void } | null>(null);
   const [motiveInput, setMotiveInput] = useState("");
 
+  const { empresa } = useAuth();
   const [provId, setProvId] = useState("");
+  const [ocMoneda, setOcMoneda] = useState("GTQ");
+  const [ocTipoCambio, setOcTipoCambio] = useState("");
   const [nota, setNota] = useState("");
   const [nuevaFechaEntrega, setNuevaFechaEntrega] = useState("");
   const [lineItems, setLineItems] = useState<{ sku_id: string; cantidad: string; costo: string }[]>([{ sku_id: "", cantidad: "", costo: "" }]);
@@ -60,12 +65,22 @@ export default function OrdenesCompraPage() {
 
   useEffect(() => { setLoading(true); load(); }, [estadoFilter, proveedorFilter]);
 
+  const seleccionarProveedor = (v: string) => {
+    setProvId(v);
+    const p = proveedores.find((x) => String(x.id) === v);
+    const m = p?.moneda || "GTQ";
+    setOcMoneda(m);
+    if (m === "USD" && !ocTipoCambio) setOcTipoCambio(String(empresa?.tipo_cambio_usd ?? ""));
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault(); setError("");
     try {
       await api.post("/compras/ordenes", {
         proveedor_id: Number(provId), fecha_entrega: nuevaFechaEntrega || null,
         nota: nota || undefined,
+        moneda: ocMoneda,
+        tipo_cambio: ocMoneda === "USD" ? (Number(ocTipoCambio) || undefined) : 1,
         items: lineItems.map((li) => ({ sku_id: Number(li.sku_id), cantidad_solicitada: Number(li.cantidad), costo_unitario: Number(li.costo) || 0 })),
       });
       setShowCreate(false); load();
@@ -140,8 +155,14 @@ export default function OrdenesCompraPage() {
           <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>Nueva Orden de Compra</h3>
           {error && <div style={{ background: "var(--danger-bg)", color: "var(--danger)", padding: "8px 12px", borderRadius: "var(--radius-sm)", marginBottom: 12, fontSize: 13 }}>{error}</div>}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-            <div><label style={lbl}>Proveedor *</label><SearchableSelect options={provOpts} value={provId} onChange={setProvId} placeholder="Seleccionar..." required /></div>
+            <div><label style={lbl}>Proveedor *</label><SearchableSelect options={provOpts} value={provId} onChange={seleccionarProveedor} placeholder="Seleccionar..." required /></div>
             <div><label style={lbl}>Fecha entrega</label><input type="date" value={nuevaFechaEntrega} onChange={(e) => setNuevaFechaEntrega(e.target.value)} style={inp} /></div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: ocMoneda === "USD" ? "1fr 1fr" : "1fr", gap: 12, marginBottom: 12 }}>
+            <div><label style={lbl}>Moneda</label><select value={ocMoneda} onChange={(e) => setOcMoneda(e.target.value)} style={inp}>{MONEDAS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</select></div>
+            {ocMoneda === "USD" && (
+              <div><label style={lbl}>Tipo de cambio (Q por $1)</label><input type="number" step="0.0001" min="0" value={ocTipoCambio} onChange={(e) => setOcTipoCambio(e.target.value)} style={inp} placeholder={String(empresa?.tipo_cambio_usd ?? "7.80")} /></div>
+            )}
           </div>
           <div style={{ marginBottom: 12 }}><label style={lbl}>Nota</label><input value={nota} onChange={(e) => setNota(e.target.value)} style={inp} /></div>
           <h4 style={{ fontSize: 14, margin: "16px 0 8px" }}>Ítems</h4>
@@ -173,6 +194,7 @@ export default function OrdenesCompraPage() {
         <Modal isOpen={!!detail} title={`OC ${detail.numero_oc}`} onClose={() => setDetail(null)} maxWidth={700}>
           <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 12 }}>
             Proveedor: {detail.proveedor_nombre} | Estado: <strong style={{ color: estadoColors[detail.estado] }}>{detail.estado}</strong>
+            {" | "}Moneda: <strong>{detail.moneda}{detail.moneda === "USD" ? ` (T.C. ${detail.tipo_cambio})` : ""}</strong>
           </p>
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead><tr style={{ borderBottom: "1px solid #e5e7eb" }}>
@@ -183,7 +205,7 @@ export default function OrdenesCompraPage() {
                 <td style={td}>{i.sku_codigo}</td><td style={td}>{i.sku_descripcion}</td>
                 <td style={{ ...td, textAlign: "right" }}>{i.cantidad_solicitada.toLocaleString()}</td>
                 <td style={{ ...td, textAlign: "right", color: i.cantidad_recibida >= i.cantidad_solicitada ? "#16a34a" : "#f59e0b" }}>{i.cantidad_recibida.toLocaleString()}</td>
-                <td style={{ ...td, textAlign: "right" }}>${i.costo_unitario.toFixed(2)}</td>
+                <td style={{ ...td, textAlign: "right" }}>{formatMoney(i.costo_unitario, detail.moneda)}</td>
                 <td style={td}>{i.cantidad_recibida > 0 ? (detail.estado !== "pendiente" ? "Recibido" : "-") : "-"}</td>
               </tr>
             ))}</tbody>

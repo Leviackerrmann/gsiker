@@ -25,6 +25,7 @@ class Proveedor(TenantMixin, Base):
     direccion: Mapped[str] = mapped_column(String(255), nullable=True)
     telefono: Mapped[str] = mapped_column(String(50), nullable=True)
     email: Mapped[str] = mapped_column(String(255), nullable=True)
+    moneda: Mapped[str] = mapped_column(String(3), default="GTQ", nullable=False)
     activo: Mapped[bool] = mapped_column(default=True, nullable=False)
     fecha_creacion: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
@@ -40,6 +41,9 @@ class OrdenCompra(TenantMixin, Base):
     fecha_emision: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     fecha_entrega: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=True)
     estado: Mapped[EstadoOrden] = mapped_column(Enum(EstadoOrden), default=EstadoOrden.PENDIENTE, nullable=False)
+    # Moneda del documento y tipo de cambio (GTQ por unidad de la moneda) al emitir.
+    moneda: Mapped[str] = mapped_column(String(3), default="GTQ", nullable=False)
+    tipo_cambio: Mapped[float] = mapped_column(Float, default=1.0, nullable=False)
     nota: Mapped[str] = mapped_column(Text, nullable=True)
     usuario_id: Mapped[int] = mapped_column(Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

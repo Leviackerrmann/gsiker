@@ -6,8 +6,9 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.database import async_session
+from app.middleware import AuditMiddleware
 from app.models import Plan, RolUsuario, Usuario
-from app.routers import auth, empresas, inventario, skus, usuarios, compras, dashboard, ventas
+from app.routers import audit, auth, empresas, inventario, pos, skus, usuarios, compras, dashboard, ventas, cobranza, ia
 from app.utils.security import hash_password
 
 # Planes por defecto del SaaS (GTQ/mes). El primero (gratis) es el que se
@@ -52,7 +53,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="minisap API",
+    title="gsiker API",
     description="ERP - Sistema de Gestión Empresarial",
     version="0.1.0",
     lifespan=lifespan,
@@ -66,13 +67,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Auditoría transversal: registra las peticiones que modifican datos.
+app.add_middleware(AuditMiddleware)
+
 app.include_router(auth.router)
+app.include_router(audit.router)
 app.include_router(usuarios.router)
 app.include_router(empresas.router)
 app.include_router(skus.router)
 app.include_router(inventario.router)
 app.include_router(compras.router)
 app.include_router(ventas.router)
+app.include_router(pos.router)
+app.include_router(cobranza.router)
+app.include_router(ia.router)
 app.include_router(dashboard.router)
 
 

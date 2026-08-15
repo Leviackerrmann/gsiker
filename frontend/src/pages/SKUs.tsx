@@ -3,12 +3,14 @@ import api from "../lib/api";
 import Modal from "../components/Modal";
 import Badge from "../components/Badge";
 import { useToast } from "../components/Toast";
+import { formatMoney } from "../lib/money";
 
-import type { SKU } from "../types";
+import type { Bodega, SKU } from "../types";
 
 export default function SKUsPage() {
   const [skus, setSkus] = useState<SKU[]>([]);
   const [categorias, setCategorias] = useState<string[]>([]);
+  const [bodegas, setBodegas] = useState<Bodega[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [categoriaFilter, setCategoriaFilter] = useState("");
@@ -18,6 +20,8 @@ export default function SKUsPage() {
     codigo_sku: "", descripcion: "", unidad_medida: "UNIDAD",
     costo_unitario: "0", precio_referencia: "0", categoria: "", subcategoria: "",
   });
+  // Stock inicial opcional (solo al crear): genera un movimiento 'stock_inicial'.
+  const [stockIni, setStockIni] = useState({ cantidad: "", bodega_id: "" });
   const [error, setError] = useState("");
   const toast = useToast();
 
@@ -29,11 +33,16 @@ export default function SKUsPage() {
     api.get(`/skus?${params}`).then((res) => { setSkus(res.data); setLoading(false); });
   };
 
-  useEffect(() => { api.get("/skus/categorias").then((r) => setCategorias(r.data)); load(); }, []);
+  useEffect(() => {
+    api.get("/skus/categorias").then((r) => setCategorias(r.data));
+    api.get("/inventario/bodegas").then((r) => setBodegas(r.data));
+    load();
+  }, []);
   useEffect(() => { setLoading(true); load(); }, [search, categoriaFilter]);
 
   const openCreate = () => {
     setForm({ codigo_sku: "", descripcion: "", unidad_medida: "UNIDAD", costo_unitario: "0", precio_referencia: "0", categoria: "", subcategoria: "" });
+    setStockIni({ cantidad: "", bodega_id: "" });
     setEditing(null); setError(""); setShowModal(true);
   };
 
@@ -58,8 +67,19 @@ export default function SKUsPage() {
         await api.put(`/skus/${editing.id}`, body);
         toast.success(`SKU ${editing.codigo_sku} actualizado`);
       } else {
-        await api.post("/skus", { ...body, codigo_sku: form.codigo_sku });
-        toast.success(`SKU ${form.codigo_sku} creado`);
+        const { data: nuevoSku } = await api.post("/skus", { ...body, codigo_sku: form.codigo_sku });
+        // Stock inicial opcional: genera un movimiento de entrada 'stock_inicial'.
+        const cant = Number(stockIni.cantidad);
+        if (cant > 0 && stockIni.bodega_id) {
+          await api.post("/inventario/movimientos", {
+            tipo: "entrada", motivo: "stock_inicial",
+            sku_id: nuevoSku.id, bodega_id: Number(stockIni.bodega_id),
+            cantidad: cant, costo_unitario: Number(form.costo_unitario) || 0,
+          });
+          toast.success(`SKU ${nuevoSku.codigo_sku} creado con ${cant} de stock inicial`);
+        } else {
+          toast.success(`SKU ${nuevoSku.codigo_sku} creado`);
+        }
       }
       setShowModal(false); load();
     } catch (err: any) { setError(err.response?.data?.detail || "Error al guardar"); }
@@ -129,9 +149,9 @@ export default function SKUsPage() {
                   <td style={td}><span style={{ color: "var(--text-primary)", fontWeight: 500, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", display: "block" }}>{s.descripcion}</span></td>
                   <td style={td}><span style={{ color: "var(--text-muted)", fontSize: 12 }}>{s.unidad_medida}</span></td>
                   <td style={td}>{s.categoria ? <Badge category={s.categoria}>{s.categoria}</Badge> : <span style={{ color: "var(--text-muted)" }}>-</span>}</td>
-                  <td style={{ ...td, textAlign: "right", fontFamily: "'Space Grotesk'", fontWeight: 600, color: "var(--text-primary)", fontSize: 13 }}>${(s.costo_unitario || 0).toFixed(2)}</td>
-                  <td style={{ ...td, textAlign: "right", fontFamily: "'Space Grotesk'", fontWeight: 600, color: "var(--text-primary)", fontSize: 13 }}>${(s.precio_referencia || 0).toFixed(2)}</td>
-                  <td style={{ ...td, textAlign: "right", fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>${((s.costo_unitario || 0) * (s.precio_referencia || 0)).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</td>
+                  <td style={{ ...td, textAlign: "right", fontFamily: "'Space Grotesk'", fontWeight: 600, color: "var(--text-primary)", fontSize: 13 }}>{formatMoney(s.costo_unitario, "GTQ")}</td>
+                  <td style={{ ...td, textAlign: "right", fontFamily: "'Space Grotesk'", fontWeight: 600, color: "var(--text-primary)", fontSize: 13 }}>{formatMoney(s.precio_referencia, "GTQ")}</td>
+                  <td style={{ ...td, textAlign: "right", fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>{formatMoney((s.costo_unitario || 0) * (s.precio_referencia || 0), "GTQ")}</td>
                   <td style={td}>
                     <div className="row-actions" style={{ display: "flex", gap: 4, opacity: 0, transition: "opacity .2s" }}>
                       <button onClick={() => openEdit(s)} style={rowBtn} title="Editar"><i className="fas fa-pen" style={{ fontSize: 10 }} /></button>
@@ -196,20 +216,50 @@ export default function SKUsPage() {
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 24 }}>
             <div>
-              <label style={lbl}><i className="fas fa-dollar-sign" style={{ fontSize: 10, marginRight: 4 }} />Costo ($)</label>
+              <label style={lbl}><i className="fas fa-dollar-sign" style={{ fontSize: 10, marginRight: 4 }} />Costo (Q)</label>
               <div style={fiWrap}>
                 <input type="number" step="0.01" min="0" value={form.costo_unitario} onChange={(e) => setForm({ ...form, costo_unitario: e.target.value })} style={fiInp} />
                 <i className="fas fa-dollar-sign fi-icon" />
               </div>
             </div>
             <div>
-              <label style={lbl}><i className="fas fa-tag" style={{ fontSize: 10, marginRight: 4 }} />Precio Referencia ($)</label>
+              <label style={lbl}><i className="fas fa-tag" style={{ fontSize: 10, marginRight: 4 }} />Precio Referencia (Q)</label>
               <div style={fiWrap}>
                 <input type="number" step="0.01" min="0" value={form.precio_referencia} onChange={(e) => setForm({ ...form, precio_referencia: e.target.value })} style={fiInp} />
                 <i className="fas fa-tag fi-icon" />
               </div>
             </div>
           </div>
+          {!editing && (
+            <div style={{ background: "var(--accent-soft)", borderRadius: 12, padding: "14px 16px", marginBottom: 20, border: "1px dashed var(--m-input-border)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <i className="fas fa-boxes-stacked" style={{ fontSize: 12, color: "var(--accent)" }} />
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>Stock inicial <span style={{ color: "var(--text-muted)", fontWeight: 500, textTransform: "none", letterSpacing: 0 }}>(opcional)</span></span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div>
+                  <label style={lbl}><i className="fas fa-cubes" style={{ fontSize: 10, marginRight: 4 }} />Cantidad</label>
+                  <div style={fiWrap}>
+                    <input type="number" min="0" step="0.01" value={stockIni.cantidad} onChange={(e) => setStockIni({ ...stockIni, cantidad: e.target.value })} style={fiInp} placeholder="0" />
+                    <i className="fas fa-cubes fi-icon" />
+                  </div>
+                </div>
+                <div>
+                  <label style={lbl}><i className="fas fa-warehouse" style={{ fontSize: 10, marginRight: 4 }} />Bodega</label>
+                  <div style={fiWrap}>
+                    <select value={stockIni.bodega_id} onChange={(e) => setStockIni({ ...stockIni, bodega_id: e.target.value })} style={fiSel}>
+                      <option value="">Sin stock inicial</option>
+                      {bodegas.map((b) => <option key={b.id} value={b.id}>{b.nombre}</option>)}
+                    </select>
+                    <i className="fas fa-warehouse fi-icon" />
+                  </div>
+                </div>
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 10, display: "flex", alignItems: "center", gap: 5 }}>
+                <i className="fas fa-circle-info" style={{ fontSize: 10, color: "var(--accent)" }} /> Genera un movimiento de entrada con el costo indicado arriba.
+              </div>
+            </div>
+          )}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, paddingTop: 16, borderTop: "1px solid var(--m-divider)" }}>
             <button type="button" onClick={() => setShowModal(false)} style={btnGhost}>Cancelar</button>
             <button type="submit" style={btnPri}><i className="fas fa-check" style={{ fontSize: 11 }} /> {editing ? "Guardar cambios" : "Crear SKU"}</button>

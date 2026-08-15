@@ -108,6 +108,8 @@ async def generar_factura(
         numero=numero,
         pedido_id=pedido_id,
         cliente_id=pedido.cliente_id,
+        moneda=pedido.moneda,
+        tipo_cambio=pedido.tipo_cambio,
         subtotal=pedido.subtotal,
         impuesto_porcentaje=iva_porcentaje,
         impuesto_total=pedido.impuesto_total,

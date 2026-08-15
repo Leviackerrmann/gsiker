@@ -26,6 +26,9 @@ import CotizacionesVentaPage from "./pages/ventas/CotizacionesVenta";
 import PedidosVentaPage from "./pages/ventas/PedidosVenta";
 import FacturasPage from "./pages/ventas/Facturas";
 import ReportesPage from "./pages/inventario/Reportes";
+import POSPage from "./pages/pos/POS";
+import CobranzaPage from "./pages/ventas/Cobranza";
+import AsistentePage from "./pages/Asistente";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -48,6 +51,8 @@ function AppRoutes() {
       <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/pos" element={<POSPage />} />
+        <Route path="/asistente" element={<AsistentePage />} />
         <Route path="/inventario/bodegas" element={<BodegasPage />} />
         <Route path="/inventario/stock" element={<StockPage />} />
         <Route path="/inventario/movimientos" element={<MovimientosPage />} />
@@ -68,6 +73,7 @@ function AppRoutes() {
         <Route path="/ventas/cotizaciones" element={<CotizacionesVentaPage />} />
         <Route path="/ventas/pedidos" element={<PedidosVentaPage />} />
         <Route path="/ventas/facturas" element={<FacturasPage />} />
+        <Route path="/ventas/cobranza" element={<CobranzaPage />} />
         <Route path="/admin/usuarios" element={<UsuariosPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" />} />

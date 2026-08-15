@@ -43,6 +43,8 @@ class Empresa(Base):
         Enum(RegimenFiscal), default=RegimenFiscal.GENERAL, nullable=False
     )
     moneda: Mapped[str] = mapped_column(String(3), default="GTQ", nullable=False)
+    # Tasa de referencia: cuántos GTQ equivalen a 1 USD. Prellenar documentos en USD.
+    tipo_cambio_usd: Mapped[float] = mapped_column(Float, default=7.80, nullable=False)
     logo_url: Mapped[str] = mapped_column(String(500), nullable=True)
     plan_id: Mapped[int] = mapped_column(Integer, ForeignKey("planes.id", ondelete="SET NULL"), nullable=True)
     activa: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
@@ -58,6 +60,15 @@ class Empresa(Base):
         if self.regimen_fiscal == RegimenFiscal.PEQUENO_CONTRIBUYENTE:
             return 5.0
         return 12.0
+
+    def factor_a_base(self, moneda: str) -> float:
+        """Factor para convertir un importe en `moneda` a la moneda base (GTQ).
+
+        GTQ → 1.0; USD → tipo de cambio configurado (GTQ por 1 USD).
+        """
+        if moneda and moneda.upper() == "USD":
+            return self.tipo_cambio_usd
+        return 1.0
 
 
 class EstadoSuscripcion(str, enum.Enum):

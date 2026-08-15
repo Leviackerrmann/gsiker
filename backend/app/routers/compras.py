@@ -84,7 +84,8 @@ def _orden_to_response(o: OrdenCompra) -> OrdenResponse:
     return OrdenResponse(
         id=o.id, numero_oc=o.numero_oc, proveedor_id=o.proveedor_id,
         proveedor_nombre=o.proveedor.nombre, fecha_emision=o.fecha_emision,
-        fecha_entrega=o.fecha_entrega, estado=o.estado.value, nota=o.nota,
+        fecha_entrega=o.fecha_entrega, estado=o.estado.value,
+        moneda=o.moneda, tipo_cambio=o.tipo_cambio, nota=o.nota,
         usuario_id=o.usuario_id, created_at=o.created_at,
         items=[ItemOCResponse(
             id=i.id, sku_id=i.sku_id, sku_codigo=i.sku.codigo_sku,
@@ -151,11 +152,18 @@ async def create_orden(
 
     numero = await generar_numero_oc(db, empresa.id)
 
+    # Moneda del documento: la del proveedor por defecto (o la enviada). El tipo de
+    # cambio se toma del enviado o se deriva de la tasa de referencia de la empresa.
+    moneda = (body.moneda or prov_obj.moneda or "GTQ").upper()
+    tipo_cambio = body.tipo_cambio if body.tipo_cambio else empresa.factor_a_base(moneda)
+
     orden = OrdenCompra(
         empresa_id=empresa.id,
         numero_oc=numero,
         proveedor_id=body.proveedor_id,
         fecha_entrega=body.fecha_entrega,
+        moneda=moneda,
+        tipo_cambio=tipo_cambio,
         nota=body.nota,
         usuario_id=current_user.id,
     )
@@ -182,8 +190,12 @@ async def create_orden(
         items.append(item)
 
     await db.flush()
-    orden.proveedor = prov_obj
-    return _orden_to_response(orden)
+    # Recargar con eager-load para serializar sin lazy-loads (async).
+    result = await db.execute(
+        select(OrdenCompra).where(OrdenCompra.id == orden.id)
+        .options(selectinload(OrdenCompra.proveedor), selectinload(OrdenCompra.items).selectinload(ItemOrdenCompra.sku))
+    )
+    return _orden_to_response(result.scalar_one())
 
 
 @router.post("/ordenes/{orden_id}/cancelar")

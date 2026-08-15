@@ -5,10 +5,17 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-comprasuser}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-compraspass}
       POSTGRES_DB: ${POSTGRES_DB:-minisapdb}
+      # Rol de aplicación (sin privilegios) que crea el script de init para RLS.
+      APP_DB_USER: ${APP_DB_USER:-nebula_app}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:-nebula_app_dev}
     ports:
-      - "5432:5432"
+      # 5433 en el host para no chocar con un Postgres local en 5432.
+      # El backend se conecta por la red interna de Docker (db:5432), no por esto.
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+      # Crea el rol de la app en la primera inicialización del volumen.
+      - ./infra/db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-comprasuser} -d ${POSTGRES_DB:-minisapdb}"]
       interval: 5s
@@ -18,16 +25,75 @@ services:
   backend:
     build: ./backend
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-comprasuser}:${POSTGRES_PASSWORD:-compraspass}@db:5432/${POSTGRES_DB:-minisapdb}
+      # App en runtime: rol SIN privilegios → sujeto a RLS (aislamiento por empresa).
+      DATABASE_URL: postgresql+asyncpg://${APP_DB_USER:-nebula_app}:${APP_DB_PASSWORD:-nebula_app_dev}@db:5432/${POSTGRES_DB:-minisapdb}
+      # Migraciones (Alembic al arrancar): dueño de las tablas, no sujeto a RLS.
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-comprasuser}:${POSTGRES_PASSWORD:-compraspass}@db:5432/${POSTGRES_DB:-minisapdb}
       SECRET_KEY: ${SECRET_KEY:-cambia-esta-clave-en-produccion}
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
+      # Asistente IA (proveedor gratis por defecto: Groq).
+      IA_PROVIDER: ${IA_PROVIDER:-groq}
+      IA_MODEL: ${IA_MODEL:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
     ports:
       - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      # Usa python (ya está en la imagen) para no depender de curl.
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status==200 else 1)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      # Da tiempo a que corran las migraciones y arranque uvicorn.
+      start_period: 30s
+
+  # Respaldos automáticos de Postgres. No corre por defecto; actívalo con:
+  #   docker compose --profile backup up -d db-backup
+  db-backup:
+    image: postgres:16-alpine
+    profiles: ["backup"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-comprasuser}
+      POSTGRES_DB: ${POSTGRES_DB:-minisapdb}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-compraspass}
+      DB_HOST: db
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-7}
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+    volumes:
+      - ./infra/db/backup.sh:/usr/local/bin/backup.sh:ro
+      - ./backups:/backups
+    entrypoint: ["sh", "-c", "while true; do /usr/local/bin/backup.sh || echo '[backup] fallo, reintenta luego'; sleep \"${BACKUP_INTERVAL_SECONDS:-86400}\"; done"]
+
+  # Bot de Telegram (canal de chat del asistente). No corre por defecto:
+  #   docker compose --profile telegram up -d telegram
+  # Requiere TELEGRAM_BOT_TOKEN (de @BotFather) y la API key del proveedor IA.
+  telegram:
+    build: ./backend
+    profiles: ["telegram"]
+    command: ["python", "-m", "app.telegram_bot"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${APP_DB_USER:-nebula_app}:${APP_DB_PASSWORD:-nebula_app_dev}@db:5432/${POSTGRES_DB:-minisapdb}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_EMPRESA_ID: ${TELEGRAM_EMPRESA_ID:-1}
+      IA_PROVIDER: ${IA_PROVIDER:-groq}
+      IA_MODEL: ${IA_MODEL:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
 
   frontend:
     build:

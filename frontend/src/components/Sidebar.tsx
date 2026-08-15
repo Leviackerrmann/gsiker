@@ -31,6 +31,7 @@ const sections: Section[] = [
     { to: "/ventas/cotizaciones", label: "Cotizaciones", icon: "fa-chart-bar" },
     { to: "/ventas/pedidos", label: "Pedidos", icon: "fa-file-invoice" },
     { to: "/ventas/facturas", label: "Facturas", icon: "fa-receipt" },
+    { to: "/ventas/cobranza", label: "Cobranza", icon: "fa-hand-holding-dollar" },
   ]},
   { label: "Administración", icon: "fa-gear", items: [
     { to: "/admin/usuarios", label: "Usuarios", icon: "fa-users" },
@@ -39,6 +40,8 @@ const sections: Section[] = [
 
 const singleItems: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: "fa-chart-pie" },
+  { to: "/asistente", label: "Asistente IA", icon: "fa-wand-magic-sparkles" },
+  { to: "/pos", label: "Punto de Venta", icon: "fa-cash-register" },
   { to: "/catalogo/skus", label: "Catálogo SKU", icon: "fa-barcode" },
 ];
 
@@ -73,7 +76,7 @@ export default function Sidebar() {
           <i className="fas fa-boxes-stacked" style={{ fontSize: 17 }} />
         </div>
         <div>
-          <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 16, color: "var(--text-primary)", letterSpacing: "-0.3px", transition: "var(--transition)" }}>minisap</div>
+          <div style={{ fontFamily: "'Space Grotesk'", fontWeight: 700, fontSize: 16, color: "var(--text-primary)", letterSpacing: "-0.3px", transition: "var(--transition)" }}>gsiker</div>
           <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 400, transition: "var(--transition)", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={empresa?.nombre}>{empresa?.nombre || "ERP v1.0"}</div>
         </div>
       </div>

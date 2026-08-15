@@ -5,7 +5,8 @@ import SearchableSelect from "../../components/SearchableSelect";
 import Badge from "../../components/Badge";
 interface ItemPV { id: number; sku_id: number; sku_codigo: string; sku_descripcion: string; cantidad_solicitada: number; cantidad_despachada: number; precio_unitario: number; precio_total: number; }
 import { useToast } from "../../components/Toast";
-interface Pedido { id: number; numero: string; cliente_id: number; cliente_nombre: string; fecha_emision: string; fecha_entrega: string | null; estado: string; subtotal: number; impuesto_total: number; total: number; nota: string | null; items: ItemPV[]; }
+import { formatMoney } from "../../lib/money";
+interface Pedido { id: number; numero: string; cliente_id: number; cliente_nombre: string; fecha_emision: string; fecha_entrega: string | null; estado: string; moneda: string; subtotal: number; impuesto_total: number; total: number; nota: string | null; items: ItemPV[]; }
 export default function PedidosVentaPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [clientes, setClientes] = useState<any[]>([]); const [skus, setSkus] = useState<any[]>([]); const [bodegas, setBodegas] = useState<any[]>([]);
@@ -77,7 +78,7 @@ export default function PedidosVentaPage() {
     <div style={card}><table style={{ width: "100%", borderCollapse: "collapse" }}><thead><tr style={{ borderBottom: "1px solid #e5e7eb" }}><th style={th}>OV</th><th style={th}>Cliente</th><th style={th}>Fecha</th><th style={th}>Estado</th><th style={{ ...th, textAlign: "right" }}>Total</th><th style={th}>Ítems</th><th style={th}></th></tr></thead>
     <tbody>{loading ? <tr><td colSpan={7} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Cargando...</td></tr>
     : pedidos.map((p) => (<tr key={p.id} style={{ borderBottom: "1px solid #f3f4f6" }}><td style={{ ...td, fontWeight: 600, color: "var(--primary)" }}>{p.numero}</td><td style={td}>{p.cliente_nombre}</td><td style={td}>{new Date(p.fecha_emision).toLocaleDateString()}</td>
-      <td style={td}><Badge color={p.estado === "pendiente" ? "warning" : p.estado === "parcial" ? "info" : p.estado === "despachado" ? "success" : p.estado === "facturado" ? "neutral" : "danger"}>{p.estado.toUpperCase()}</Badge></td><td style={{ ...td, textAlign: "right", fontWeight: 600 }}>${p.total.toFixed(2)}</td><td style={td}>{p.items.length}</td>
+      <td style={td}><Badge color={p.estado === "pendiente" ? "warning" : p.estado === "parcial" ? "info" : p.estado === "despachado" ? "success" : p.estado === "facturado" ? "neutral" : "danger"}>{p.estado.toUpperCase()}</Badge></td><td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{formatMoney(p.total, p.moneda)}</td><td style={td}>{p.items.length}</td>
       <td style={td}>{(p.estado === "pendiente" || p.estado === "parcial") && <button onClick={() => openDespacho(p)} style={{ ...btnPri, fontSize: 11, padding: "4px 8px", marginRight: 4 }}>Despachar</button>}
         {(p.estado === "parcial" || p.estado === "despachado") && <button onClick={() => openDevolucion(p)} style={{ ...btnSm, marginRight: 4, color: "var(--danger)" }}>Devolver</button>}
         {(p.estado === "despachado") && <button onClick={() => handleFacturar(p.id)} style={{ ...btnPri, fontSize: 11, padding: "4px 8px", marginRight: 4, background: "#16a34a" }}>Facturar</button>}

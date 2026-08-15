@@ -1,0 +1,50 @@
+# Stack de APP de un color (blue o green). Se copia como docker-compose.yml
+# dentro de ~/nebula/<color>/ y se levanta con COMPOSE_PROJECT_NAME=nebula-<color>.
+#
+# Variables inyectadas por nebula_ctl.sh:
+#   COLOR        blue | green
+#   FRONT_PORT   puerto host del frontend (blue 8081 / green 8082)
+#   BACK_PORT    puerto host del backend  (blue 8001 / green 8002)
+# El resto sale de ~/nebula/shared/.env (symlinkeado como ./.env).
+#
+# Los puertos se publican SOLO en 127.0.0.1: nunca son públicos; el router
+# (network_mode host) es quien enruta el tráfico del puerto 80 hacia ellos.
+services:
+  backend:
+    image: nebula-${COLOR}-backend:latest
+    build: ./backend
+    env_file:
+      - .env
+    environment:
+      # App en runtime: rol SIN privilegios -> sujeto a RLS.
+      DATABASE_URL: postgresql+asyncpg://${APP_DB_USER:-nebula_app}:${APP_DB_PASSWORD:-nebula_app_dev}@db:5432/${POSTGRES_DB:-minisapdb}
+      # Migraciones (Alembic al arrancar): dueño de las tablas, no sujeto a RLS.
+      MIGRATION_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-comprasuser}:${POSTGRES_PASSWORD:-compraspass}@db:5432/${POSTGRES_DB:-minisapdb}
+    ports:
+      - "127.0.0.1:${BACK_PORT}:8000"
+    networks:
+      - nebula_net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/api/health').status==200 else 1)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+
+  frontend:
+    image: nebula-${COLOR}-frontend:latest
+    build:
+      context: ./frontend
+      args:
+        # En prod el SPA llama al API same-origin (/api); el router lo enruta.
+        VITE_API_URL: ${VITE_API_URL:-/api}
+    ports:
+      - "127.0.0.1:${FRONT_PORT}:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+networks:
+  nebula_net:
+    external: true

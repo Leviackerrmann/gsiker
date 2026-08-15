@@ -2,7 +2,26 @@ import { useEffect, useState } from "react";
 import api from "../../lib/api";
 import Modal from "../../components/Modal";
 import { useToast } from "../../components/Toast";
+import { formatMoney } from "../../lib/money";
 import type { Bodega, Movimiento, SKU } from "../../types";
+
+// Motivos válidos del enum MotivoMovimiento del backend, curados por tipo.
+// Se excluyen transferencia_entrada/salida (vienen del flujo de transferencias).
+const MOTIVOS: Record<string, { value: string; label: string }[]> = {
+  entrada: [
+    { value: "stock_inicial", label: "Stock inicial" },
+    { value: "compra", label: "Compra" },
+    { value: "devolucion_cliente", label: "Devolución de cliente" },
+    { value: "ajuste", label: "Ajuste (+)" },
+  ],
+  salida: [
+    { value: "venta", label: "Venta" },
+    { value: "consumo_interno", label: "Consumo interno" },
+    { value: "merma", label: "Merma / pérdida" },
+    { value: "devolucion_proveedor", label: "Devolución a proveedor" },
+    { value: "ajuste", label: "Ajuste (−)" },
+  ],
+};
 
 export default function MovimientosPage() {
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
@@ -87,7 +106,7 @@ export default function MovimientosPage() {
             { label: "Total Movimientos", val: filtered.length, ic: "fa-arrow-right-arrow-left", s: "s1" },
             { label: "Entradas Hoy", val: entradasHoy, ic: "fa-arrow-down", s: "s2" },
             { label: "Salidas Hoy", val: salidasHoy, ic: "fa-arrow-up", s: "s3" },
-            { label: "Costo Total", val: `$${costoTotal.toLocaleString()}`, ic: "fa-coins", s: "s4" },
+            { label: "Costo Total", val: formatMoney(costoTotal, "GTQ"), ic: "fa-coins", s: "s4" },
           ].map((c, i) => (
             <div key={c.label} style={{
               background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--card-radius)",
@@ -186,7 +205,7 @@ export default function MovimientosPage() {
                     </td>
                     <td style={td}>
                       <span style={{ fontFamily: "'Space Grotesk'", fontWeight: 600, color: "var(--text-primary)", fontSize: 13 }}>
-                        ${(m.costo_total || 0).toLocaleString()}
+                        {formatMoney(m.costo_total, "GTQ")}
                       </span>
                     </td>
                   </tr>
@@ -204,14 +223,17 @@ export default function MovimientosPage() {
             <div style={sectionTitle}><i className="fas fa-arrows-up-down" /> Tipo de Movimiento</div>
             <div style={{ marginBottom: 16 }}>
               <label style={lbl}><i className="fas fa-toggle-on" style={{ fontSize: 11 }} /> Tipo</label>
-              <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })} style={selInp}>
+              <select value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value, motivo: "" })} style={selInp}>
                 <option value="entrada">Entrada (+)</option>
                 <option value="salida">Salida (−)</option>
               </select>
             </div>
             <div>
               <label style={lbl}><i className="fas fa-comment" style={{ fontSize: 11 }} /> Motivo</label>
-              <input value={form.motivo} onChange={(e) => setForm({ ...form, motivo: e.target.value })} style={inp} placeholder="Ej: Compra a proveedor, Despacho a cliente..." />
+              <select value={form.motivo} onChange={(e) => setForm({ ...form, motivo: e.target.value })} style={selInp} required>
+                <option value="">Seleccionar motivo...</option>
+                {MOTIVOS[form.tipo].map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
             </div>
           </div>
           <div style={{ marginBottom: 20 }}>

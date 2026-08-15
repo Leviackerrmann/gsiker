@@ -86,6 +86,10 @@ async def procesar_recepcion(
         )
         sku = sku_result.scalar_one()
 
+        # El costo de la OC está en la moneda del documento; el inventario/kardex
+        # se valoriza en la moneda base (GTQ), así que se convierte con el tipo de cambio.
+        costo_gtq = round(item.costo_unitario * orden.tipo_cambio, 4)
+
         movimiento = MovimientoInventario(
             empresa_id=empresa_id,
             tipo=TipoMovimiento.ENTRADA,
@@ -93,14 +97,14 @@ async def procesar_recepcion(
             sku_id=item.sku_id,
             bodega_id=bodega_id,
             cantidad=cantidad,
-            costo_unitario=item.costo_unitario,
-            costo_total=cantidad * item.costo_unitario,
+            costo_unitario=costo_gtq,
+            costo_total=round(cantidad * costo_gtq, 2),
             referencia=f"Recepción OC {orden.numero_oc}",
             usuario_id=usuario_id,
         )
         db.add(movimiento)
 
-        sku.costo_unitario = await calcular_pmp_entrada(db, sku, cantidad, item.costo_unitario)
+        sku.costo_unitario = await calcular_pmp_entrada(db, sku, cantidad, costo_gtq)
         await actualizar_stock(db, empresa_id, item.sku_id, bodega_id, cantidad, TipoMovimiento.ENTRADA)
 
     if total_recibido >= total_solicitado:

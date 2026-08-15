@@ -32,7 +32,8 @@ async def create_cliente(body: dict, db: AsyncSession = Depends(get_db), empresa
     if (await db.execute(select(Cliente).where(Cliente.empresa_id == empresa.id, Cliente.codigo == body["codigo"]))).scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El código ya existe")
     c = Cliente(empresa_id=empresa.id, codigo=body["codigo"], nombre=body["nombre"], documento=body.get("documento"),
-                 direccion=body.get("direccion"), telefono=body.get("telefono"), email=body.get("email"))
+                 direccion=body.get("direccion"), telefono=body.get("telefono"), email=body.get("email"),
+                 moneda=(body.get("moneda") or "GTQ").upper())
     db.add(c); await db.flush(); await db.refresh(c); return c
 
 @router.put("/clientes/{cliente_id}")
@@ -55,15 +56,20 @@ async def list_cotizaciones(estado: str | None = None, db: AsyncSession = Depend
     result = await db.execute(stmt)
     cotis = result.scalars().unique().all()
     return [{"id": c.id, "numero": c.numero, "cliente_id": c.cliente_id, "cliente_nombre": c.cliente.nombre,
-             "fecha": c.fecha, "estado": c.estado, "notas": c.notas, "usuario_nombre": c.usuario.nombre_completo if c.usuario else None,
+             "fecha": c.fecha, "estado": c.estado, "moneda": c.moneda, "notas": c.notas, "usuario_nombre": c.usuario.nombre_completo if c.usuario else None,
              "items": [{"id": i.id, "sku_id": i.sku_id, "sku_codigo": i.sku.codigo_sku, "sku_descripcion": i.sku.descripcion,
                          "cantidad": i.cantidad, "precio_unitario": i.precio_unitario, "precio_total": i.precio_total} for i in c.items]} for c in cotis]
 
 @router.post("/cotizaciones", status_code=status.HTTP_201_CREATED)
 async def create_cotizacion(body: dict, db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa), current_user: Usuario = Depends(get_current_user)):
+    cli = (await db.execute(select(Cliente).where(Cliente.id == body["cliente_id"], Cliente.empresa_id == empresa.id))).scalar_one_or_none()
+    if not cli:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
     result = await db.execute(select(func.count()).select_from(CotizacionVenta).where(CotizacionVenta.empresa_id == empresa.id))
     numero = f"COTV-{(result.scalar() or 0) + 1:06d}"
-    c = CotizacionVenta(empresa_id=empresa.id, numero=numero, cliente_id=body["cliente_id"], notas=body.get("notas"), usuario_id=current_user.id)
+    moneda = (cli.moneda or "GTQ").upper()
+    c = CotizacionVenta(empresa_id=empresa.id, numero=numero, cliente_id=body["cliente_id"], moneda=moneda,
+                        tipo_cambio=empresa.factor_a_base(moneda), notas=body.get("notas"), usuario_id=current_user.id)
     db.add(c); await db.flush()
     for it in body.get("items", []):
         sku = (await db.execute(select(SKU).where(SKU.id == it["sku_id"], SKU.empresa_id == empresa.id))).scalar_one_or_none()
@@ -91,6 +97,7 @@ async def convertir_cotizacion(cot_id: int, db: AsyncSession = Depends(get_db), 
     if c.estado != "aceptada": raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Solo cotizaciones aceptadas")
     numero = await generar_numero_ov(db, empresa.id)
     p = PedidoVenta(empresa_id=empresa.id, numero=numero, cliente_id=c.cliente_id, cotizacion_id=c.id, usuario_id=current_user.id,
+                    moneda=c.moneda, tipo_cambio=c.tipo_cambio,
                     nota=f"Generado desde cotización {c.numero}")
     db.add(p); await db.flush()
     for it in c.items:
@@ -110,6 +117,7 @@ async def list_pedidos(estado: str | None = None, cliente_id: int | None = None,
     result = await db.execute(stmt); pedidos = result.scalars().unique().all()
     return [{"id": p.id, "numero": p.numero, "cliente_id": p.cliente_id, "cliente_nombre": p.cliente.nombre,
              "fecha_emision": p.fecha_emision, "fecha_entrega": p.fecha_entrega, "estado": p.estado.value,
+             "moneda": p.moneda, "tipo_cambio": p.tipo_cambio,
              "subtotal": p.subtotal, "impuesto_total": p.impuesto_total, "total": p.total, "nota": p.nota,
              "items": [{"id": i.id, "sku_id": i.sku_id, "sku_codigo": i.sku.codigo_sku, "sku_descripcion": i.sku.descripcion,
                          "cantidad_solicitada": i.cantidad_solicitada, "cantidad_despachada": i.cantidad_despachada,
@@ -121,6 +129,7 @@ async def get_pedido(pedido_id: int, db: AsyncSession = Depends(get_db), empresa
     if not p: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Pedido no encontrado")
     return {"id": p.id, "numero": p.numero, "cliente_id": p.cliente_id, "cliente_nombre": p.cliente.nombre,
             "fecha_emision": p.fecha_emision, "fecha_entrega": p.fecha_entrega, "estado": p.estado.value,
+            "moneda": p.moneda, "tipo_cambio": p.tipo_cambio,
             "subtotal": p.subtotal, "impuesto_total": p.impuesto_total, "total": p.total, "nota": p.nota,
             "items": [{"id": i.id, "sku_id": i.sku_id, "sku_codigo": i.sku.codigo_sku, "sku_descripcion": i.sku.descripcion,
                         "cantidad_solicitada": i.cantidad_solicitada, "cantidad_despachada": i.cantidad_despachada,
@@ -132,7 +141,9 @@ async def create_pedido(body: dict, db: AsyncSession = Depends(get_db), empresa:
     c = (await db.execute(select(Cliente).where(Cliente.id == body["cliente_id"], Cliente.empresa_id == empresa.id))).scalar_one_or_none()
     if not c: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cliente no encontrado")
     numero = await generar_numero_ov(db, empresa.id)
+    moneda = (c.moneda or "GTQ").upper()
     p = PedidoVenta(empresa_id=empresa.id, numero=numero, cliente_id=body["cliente_id"], fecha_entrega=body.get("fecha_entrega"),
+                    moneda=moneda, tipo_cambio=empresa.factor_a_base(moneda),
                     nota=body.get("nota"), usuario_id=current_user.id, cotizacion_id=body.get("cotizacion_id"))
     db.add(p); await db.flush()
     subtotal = 0.0
@@ -207,7 +218,8 @@ async def facturar_pedido(pedido_id: int, db: AsyncSession = Depends(get_db), em
     p = (await db.execute(select(PedidoVenta).where(PedidoVenta.id == pedido_id))).scalar_one()
     c = (await db.execute(select(Cliente).where(Cliente.id == factura.cliente_id))).scalar_one()
     return {"id": factura.id, "numero": factura.numero, "pedido_numero": p.numero, "cliente_nombre": c.nombre,
-            "fecha_emision": factura.fecha_emision, "subtotal": factura.subtotal, "impuesto_total": factura.impuesto_total, "total": factura.total, "estado": factura.estado}
+            "fecha_emision": factura.fecha_emision, "moneda": factura.moneda, "tipo_cambio": factura.tipo_cambio,
+            "subtotal": factura.subtotal, "impuesto_total": factura.impuesto_total, "total": factura.total, "estado": factura.estado}
 
 @router.get("/facturas")
 async def list_facturas(db: AsyncSession = Depends(get_db), empresa: Empresa = Depends(get_current_empresa)):
@@ -215,6 +227,7 @@ async def list_facturas(db: AsyncSession = Depends(get_db), empresa: Empresa = D
     facturas = result.scalars().unique().all()
     return [{"id": f.id, "numero": f.numero, "pedido_id": f.pedido_id, "pedido_numero": f.pedido.numero,
              "cliente_id": f.cliente_id, "cliente_nombre": f.cliente.nombre, "fecha_emision": f.fecha_emision,
+             "moneda": f.moneda, "tipo_cambio": f.tipo_cambio,
              "fecha_vencimiento": f.fecha_vencimiento, "subtotal": f.subtotal, "impuesto_porcentaje": f.impuesto_porcentaje,
              "impuesto_total": f.impuesto_total, "total": f.total, "estado": f.estado, "notas": f.notas} for f in facturas]
 
@@ -227,7 +240,7 @@ async def get_factura(factura_id: int, db: AsyncSession = Depends(get_db), empre
     p = (await db.execute(select(PedidoVenta).where(PedidoVenta.id == f.pedido_id)
           .options(selectinload(PedidoVenta.items).selectinload(ItemPedidoVenta.sku)))).scalar_one()
     return {"id": f.id, "numero": f.numero, "pedido_id": f.pedido_id, "pedido_numero": p.numero,
-            "cliente_nombre": f.cliente.nombre, "fecha_emision": f.fecha_emision,
+            "cliente_nombre": f.cliente.nombre, "fecha_emision": f.fecha_emision, "moneda": f.moneda, "tipo_cambio": f.tipo_cambio,
             "fecha_vencimiento": f.fecha_vencimiento, "subtotal": f.subtotal,
             "impuesto_porcentaje": f.impuesto_porcentaje, "impuesto_total": f.impuesto_total,
             "total": f.total, "estado": f.estado, "notas": f.notas,

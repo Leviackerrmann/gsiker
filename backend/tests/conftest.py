@@ -4,9 +4,15 @@ import pytest_asyncio
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
+from app import database, ratelimit
+from app.config import settings
 from app.database import get_db
 from app.main import app
 from app.models import Base, Plan
+
+# Por defecto el rate-limiting se desactiva en tests para no acumular estado
+# entre casos; el test dedicado lo activa explícitamente.
+settings.RATE_LIMIT_ENABLED = False
 
 
 @pytest_asyncio.fixture
@@ -44,9 +50,18 @@ async def client(db_sessionmaker):
                 raise
 
     app.dependency_overrides[get_db] = _get_db_override
+    # El AuditMiddleware abre su propia sesión vía database.async_session;
+    # apúntala a la BD de prueba para que la auditoría escriba ahí y sea
+    # verificable (en vez de intentar el Postgres real).
+    original_session = database.async_session
+    database.async_session = db_sessionmaker
+    ratelimit.reset()
+
     transport = httpx.ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://test") as c:
         yield c
+
+    database.async_session = original_session
     app.dependency_overrides.clear()
 
 

@@ -41,7 +41,7 @@ export default function Dashboard() {
 
   const cards = [
     { label: "SKUs Registrados", target: data.sku_count, icon: "fa-barcode", color: "c1", trend: "+2", trendLabel: "vs. semana pasada" },
-    { label: "Valor Stock", target: Math.round(data.valor_stock || 0), icon: "fa-coins", color: "c2", prefix: "$", isMoney: true, trend: "+5.3%", trendLabel: "vs. mes anterior" },
+    { label: "Valor Stock", target: Math.round(data.valor_stock || 0), icon: "fa-coins", color: "c2", prefix: "Q ", isMoney: true, trend: "+5.3%", trendLabel: "vs. mes anterior" },
     { label: "Alertas Stock", target: data.alertas_count, icon: "fa-shield-halved", color: "c3", ok: data.alertas_count === 0 },
     { label: "OC Pendientes", target: data.oc_pendientes_count, icon: "fa-file-circle-exclamation", color: "c4", warn: data.oc_pendientes_count > 0 },
     { label: "Movimientos Hoy", target: data.movs_hoy_count, icon: "fa-arrow-right-arrow-left", color: "c5", trend: "+12", trendLabel: "vs. ayer" },

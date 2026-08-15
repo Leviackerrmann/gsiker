@@ -26,6 +26,7 @@ class UsuarioResponse(BaseModel):
     nombre_completo: str
     rol: str
     activo: bool
+    totp_enabled: bool
     fecha_creacion: datetime
 
     model_config = {"from_attributes": True}

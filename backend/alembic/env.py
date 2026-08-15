@@ -12,8 +12,10 @@ from app.models import Base
 # Objeto de configuración de Alembic
 config = context.config
 
-# Inyecta la URL de la BD desde la configuración de la app (asyncpg)
-config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+# Inyecta la URL de la BD desde la configuración de la app (asyncpg).
+# Las migraciones usan la conexión del DUEÑO (crea/altera esquema y no está
+# sujeta a RLS), no la del rol de la app. Ver Settings.migration_url.
+config.set_main_option("sqlalchemy.url", settings.migration_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

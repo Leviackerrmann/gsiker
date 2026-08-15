@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import api from "../../lib/api";
+import { MONEDAS } from "../../lib/money";
 
 interface Proveedor {
   id: number;
@@ -9,6 +10,7 @@ interface Proveedor {
   direccion: string | null;
   telefono: string | null;
   email: string | null;
+  moneda: string;
   activo: boolean;
   fecha_creacion: string;
 }
@@ -18,7 +20,7 @@ export default function ProveedoresPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Proveedor | null>(null);
-  const [form, setForm] = useState({ codigo: "", nombre: "", documento: "", direccion: "", telefono: "", email: "" });
+  const [form, setForm] = useState({ codigo: "", nombre: "", documento: "", direccion: "", telefono: "", email: "", moneda: "GTQ" });
   const [error, setError] = useState("");
 
   const load = async () => {
@@ -30,14 +32,14 @@ export default function ProveedoresPage() {
   useEffect(() => { load(); }, []);
 
   const reset = () => {
-    setForm({ codigo: "", nombre: "", documento: "", direccion: "", telefono: "", email: "" });
+    setForm({ codigo: "", nombre: "", documento: "", direccion: "", telefono: "", email: "", moneda: "GTQ" });
     setEditing(null);
     setError("");
   };
 
   const openCreate = () => { reset(); setShowForm(true); };
   const openEdit = (p: Proveedor) => {
-    setForm({ codigo: p.codigo, nombre: p.nombre, documento: p.documento || "", direccion: p.direccion || "", telefono: p.telefono || "", email: p.email || "" });
+    setForm({ codigo: p.codigo, nombre: p.nombre, documento: p.documento || "", direccion: p.direccion || "", telefono: p.telefono || "", email: p.email || "", moneda: p.moneda || "GTQ" });
     setEditing(p);
     setShowForm(true);
   };
@@ -50,7 +52,7 @@ export default function ProveedoresPage() {
         await api.put(`/compras/proveedores/${editing.id}`, {
           nombre: form.nombre, documento: form.documento || null,
           direccion: form.direccion || null, telefono: form.telefono || null,
-          email: form.email || null,
+          email: form.email || null, moneda: form.moneda,
         });
       } else {
         await api.post("/compras/proveedores", form);
@@ -91,6 +93,9 @@ export default function ProveedoresPage() {
             <div><label style={lbl}>Email</label><input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} style={inp} /></div>
             <div><label style={lbl}>Dirección</label><input value={form.direccion} onChange={(e) => setForm({ ...form, direccion: e.target.value })} style={inp} /></div>
           </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+            <div><label style={lbl}>Moneda</label><select value={form.moneda} onChange={(e) => setForm({ ...form, moneda: e.target.value })} style={inp}>{MONEDAS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</select></div>
+          </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button type="submit" style={btnPri}>{editing ? "Guardar" : "Crear"}</button>
             <button type="button" onClick={() => { setShowForm(false); reset(); }} style={btnSec}>Cancelar</button>
@@ -105,6 +110,7 @@ export default function ProveedoresPage() {
               <th style={th}>Código</th>
               <th style={th}>Nombre</th>
               <th style={th}>Documento</th>
+              <th style={th}>Moneda</th>
               <th style={th}>Teléfono</th>
               <th style={th}>Estado</th>
               <th style={th}></th>
@@ -112,14 +118,15 @@ export default function ProveedoresPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Cargando...</td></tr>
+              <tr><td colSpan={7} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Cargando...</td></tr>
             ) : proveedores.length === 0 ? (
-              <tr><td colSpan={6} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Sin proveedores</td></tr>
+              <tr><td colSpan={7} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Sin proveedores</td></tr>
             ) : proveedores.map((p) => (
               <tr key={p.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
                 <td style={{ ...td, fontWeight: 600, color: "var(--primary)" }}>{p.codigo}</td>
                 <td style={td}>{p.nombre}</td>
                 <td style={td}>{p.documento || "-"}</td>
+                <td style={td}>{p.moneda || "GTQ"}</td>
                 <td style={td}>{p.telefono || "-"}</td>
                 <td style={td}><span style={{ color: p.activo ? "#16a34a" : "#dc2626", fontWeight: 600 }}>{p.activo ? "Activo" : "Inactivo"}</span></td>
                 <td style={td}>

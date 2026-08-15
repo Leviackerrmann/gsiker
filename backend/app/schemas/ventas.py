@@ -4,14 +4,15 @@ from pydantic import BaseModel
 class ClienteCreate(BaseModel):
     codigo: str; nombre: str; documento: str | None = None
     direccion: str | None = None; telefono: str | None = None; email: str | None = None
+    moneda: str = "GTQ"
 
 class ClienteUpdate(BaseModel):
     nombre: str | None = None; documento: str | None = None; direccion: str | None = None
-    telefono: str | None = None; email: str | None = None; activo: bool | None = None
+    telefono: str | None = None; email: str | None = None; moneda: str | None = None; activo: bool | None = None
 
 class ClienteResponse(BaseModel):
     id: int; codigo: str; nombre: str; documento: str | None; direccion: str | None
-    telefono: str | None; email: str | None; activo: bool; fecha_creacion: datetime
+    telefono: str | None; email: str | None; moneda: str; activo: bool; fecha_creacion: datetime
     model_config = {"from_attributes": True}
 
 class ItemCotizacionVentaCreate(BaseModel):

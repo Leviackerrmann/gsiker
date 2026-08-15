@@ -25,6 +25,7 @@ class EmpresaUpdate(BaseModel):
     email: str | None = None
     regimen_fiscal: RegimenFiscal | None = None
     moneda: str | None = None
+    tipo_cambio_usd: float | None = None
     logo_url: str | None = None
     activa: bool | None = None
 
@@ -39,6 +40,7 @@ class EmpresaResponse(BaseModel):
     email: str | None
     regimen_fiscal: RegimenFiscal
     moneda: str
+    tipo_cambio_usd: float
     logo_url: str | None
     plan_id: int | None
     activa: bool

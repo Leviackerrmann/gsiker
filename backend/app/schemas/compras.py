@@ -10,6 +10,7 @@ class ProveedorCreate(BaseModel):
     direccion: str | None = None
     telefono: str | None = None
     email: str | None = None
+    moneda: str = "GTQ"
 
 
 class ProveedorUpdate(BaseModel):
@@ -18,6 +19,7 @@ class ProveedorUpdate(BaseModel):
     direccion: str | None = None
     telefono: str | None = None
     email: str | None = None
+    moneda: str | None = None
     activo: bool | None = None
 
 
@@ -29,6 +31,7 @@ class ProveedorResponse(BaseModel):
     direccion: str | None
     telefono: str | None
     email: str | None
+    moneda: str
     activo: bool
     fecha_creacion: datetime
 
@@ -45,6 +48,9 @@ class OrdenCreate(BaseModel):
     proveedor_id: int
     fecha_entrega: datetime | None = None
     nota: str | None = None
+    # Opcionales: si no se envían, se derivan del proveedor y de la empresa.
+    moneda: str | None = None
+    tipo_cambio: float | None = None
     items: list[ItemOCCreate]
 
 
@@ -74,6 +80,8 @@ class OrdenResponse(BaseModel):
     fecha_emision: datetime
     fecha_entrega: datetime | None
     estado: str
+    moneda: str
+    tipo_cambio: float
     nota: str | None
     usuario_id: int | None
     created_at: datetime

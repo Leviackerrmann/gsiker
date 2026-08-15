@@ -82,6 +82,9 @@ alembic upgrade head                                          # aplicar
 alembic downgrade -1                                          # revertir última
 ```
 
-## Usuario inicial
+## Alta de empresa (onboarding) y superadmin
 
-Al arrancar por primera vez se crea un usuario `admin` (contraseña `admin2026`) si no existe. **Cambiar en el primer login.** (Se reemplazará por un flujo de alta de empresa en la fase multi-empresa.)
+El sistema es **multi-empresa (multi-tenant)**: cada empresa tiene sus propios datos aislados.
+
+- **Crear una empresa**: en la web ve a `/register` (o `POST /api/auth/register-empresa`). Se crea la empresa, su primer usuario **admin** y una suscripción al plan gratuito; quedas logueado.
+- **Superadmin de plataforma**: al arrancar por primera vez se siembran 3 planes (Emprendedor/Pyme/Pro) y un usuario `superadmin` (contraseña `admin2026`) **sin empresa**, para administrar el SaaS (p. ej. `GET /api/empresas`). **Cambiar la contraseña en producción.** No sirve para operar datos de una empresa concreta; para eso, regístrate una empresa.
