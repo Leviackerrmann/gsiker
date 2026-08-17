@@ -139,6 +139,7 @@ async def _chat_openai(db, empresa_id, empresa_nombre, mensaje, historial, cfg: 
     messages.append({"role": "user", "content": mensaje})
     tools = _tools_openai()
     acciones: list[dict] = []
+    uso = {"modelo": cfg.model, "tokens_in": 0, "tokens_out": 0}
 
     for _ in range(settings.IA_MAX_ITERS):
         try:
@@ -149,9 +150,14 @@ async def _chat_openai(db, empresa_id, empresa_nombre, mensaje, historial, cfg: 
         except Exception as exc:  # noqa: BLE001
             raise IAError(f"Error del proveedor de IA ({cfg.provider}): {exc}")
 
+        u = getattr(resp, "usage", None)
+        if u:
+            uso["tokens_in"] += getattr(u, "prompt_tokens", 0) or 0
+            uso["tokens_out"] += getattr(u, "completion_tokens", 0) or 0
+
         msg = resp.choices[0].message
         if not msg.tool_calls:
-            return {"respuesta": (msg.content or "").strip(), "acciones": acciones}
+            return {"respuesta": (msg.content or "").strip(), "acciones": acciones, "uso": uso}
 
         import json
         messages.append({
@@ -184,18 +190,23 @@ async def _chat_anthropic(db, empresa_id, empresa_nombre, mensaje, historial, cf
     messages: list[dict] = list(historial or [])
     messages.append({"role": "user", "content": mensaje})
     acciones: list[dict] = []
+    uso = {"modelo": cfg.model, "tokens_in": 0, "tokens_out": 0}
 
     for _ in range(settings.IA_MAX_ITERS):
         resp = await client.messages.create(
             model=cfg.model, max_tokens=settings.IA_MAX_TOKENS,
             system=_system_prompt(empresa_nombre), tools=TOOLS, messages=messages,
         )
+        u = getattr(resp, "usage", None)
+        if u:
+            uso["tokens_in"] += getattr(u, "input_tokens", 0) or 0
+            uso["tokens_out"] += getattr(u, "output_tokens", 0) or 0
         if resp.stop_reason == "refusal":
-            return {"respuesta": "No puedo ayudar con esa solicitud.", "acciones": acciones}
+            return {"respuesta": "No puedo ayudar con esa solicitud.", "acciones": acciones, "uso": uso}
         messages.append({"role": "assistant", "content": resp.content})
         if resp.stop_reason != "tool_use":
             texto = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
-            return {"respuesta": texto.strip(), "acciones": acciones}
+            return {"respuesta": texto.strip(), "acciones": acciones, "uso": uso}
         resultados = []
         for bloque in resp.content:
             if getattr(bloque, "type", None) != "tool_use":

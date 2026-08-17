@@ -5,8 +5,13 @@ export interface User {
   email: string | null;
   nombre_completo: string;
   rol: string;
+  permisos?: string[] | null;
   activo: boolean;
   fecha_creacion: string;
+  // Devueltos por /auth/me: módulos que la empresa tiene (capa 1) y los que este
+  // usuario puede ver (capa 1 ∩ capa 2). Usados para gatear el menú.
+  modulos_empresa?: string[];
+  modulos_visibles?: string[];
 }
 
 export type RegimenFiscal = "general" | "pequeno_contribuyente";

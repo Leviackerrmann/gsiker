@@ -39,14 +39,17 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
 
 
-def create_access_token(data: dict) -> str:
+def create_access_token(data: dict, scope: str = "tenant") -> str:
+    """Token de acceso. `scope` distingue la frontera: "tenant" (usuarios de
+    empresa) vs "platform" (superadmin del SaaS). Un token de un scope NO es
+    válido en endpoints del otro (ver dependencies)."""
     to_encode = data.copy()
     if "sub" in to_encode:
         to_encode["sub"] = str(to_encode["sub"])
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.JWT_EXPIRE_MINUTES)
     # typ="access" distingue el token de acceso del token intermedio de 2FA,
     # para que un token de 2FA (typ="2fa") no pueda usarse como credencial.
-    to_encode.update({"exp": expire, "typ": "access"})
+    to_encode.update({"exp": expire, "typ": "access", "scope": scope})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
 

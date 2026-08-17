@@ -30,7 +30,8 @@ class SKUResponse(BaseModel):
     descripcion: str
     unidad_medida: str
     precio_referencia: float
-    costo_unitario: float
+    # Se oculta (null) a operadores: el costo es información sensible (márgenes).
+    costo_unitario: float | None
     metodo_valorizacion: str
     categoria: str | None
     subcategoria: str | None

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.dependencies import get_current_empresa, get_current_user
+from app.dependencies import get_current_empresa, get_current_user, require_admin, requiere_permiso
 from app.models.cobranza import CuentaPorCobrar, EstadoCxC, MetodoAbono
 from app.models.empresa import Empresa
 from app.models.usuario import Usuario
@@ -19,7 +19,11 @@ from app.schemas.cobranza import (
 )
 from app.services import cobranza as cobranza_service
 
-router = APIRouter(prefix="/api/cobranza", tags=["cobranza"])
+router = APIRouter(
+    prefix="/api/cobranza",
+    tags=["cobranza"],
+    dependencies=[Depends(requiere_permiso("cobranza"))],
+)
 
 
 def _bad_request(exc: Exception) -> HTTPException:
@@ -151,7 +155,7 @@ async def anular_cuenta(
     cuenta_id: int,
     db: AsyncSession = Depends(get_db),
     empresa: Empresa = Depends(get_current_empresa),
-    _current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_admin),
 ):
     try:
         return await cobranza_service.anular_cuenta(db, empresa.id, cuenta_id)

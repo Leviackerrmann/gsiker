@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from app.models.empresa import RegimenFiscal
+from app.models.empresa import IntervaloPlan, RegimenFiscal
 
 
 class EmpresaCreate(BaseModel):
@@ -27,7 +27,6 @@ class EmpresaUpdate(BaseModel):
     moneda: str | None = None
     tipo_cambio_usd: float | None = None
     logo_url: str | None = None
-    activa: bool | None = None
 
 
 class EmpresaResponse(BaseModel):
@@ -66,11 +65,14 @@ class RegistroEmpresaRequest(BaseModel):
 
 class PlanResponse(BaseModel):
     id: int
+    codigo: str
     nombre: str
     descripcion: str | None
-    precio_mensual: float
-    max_usuarios: int | None
-    max_skus: int | None
+    precio: float
+    moneda: str
+    intervalo: IntervaloPlan
     activo: bool
+    es_personalizado: bool
+    limites: dict
 
     model_config = {"from_attributes": True}

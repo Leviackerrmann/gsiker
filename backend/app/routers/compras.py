@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.dependencies import get_current_empresa, get_current_user, require_admin
+from app.dependencies import get_current_empresa, get_current_user, require_admin, requiere_permiso
 from app.models.compras import (
     CotizacionCompra,
     DevolucionCompra,
@@ -42,7 +42,11 @@ from app.schemas.compras import (
 from app.services.compras import generar_numero_oc, procesar_recepcion
 from app.services.inventario import actualizar_stock
 
-router = APIRouter(prefix="/api/compras", tags=["compras"])
+router = APIRouter(
+    prefix="/api/compras",
+    tags=["compras"],
+    dependencies=[Depends(requiere_permiso("compras"))],
+)
 
 
 # ═══ PROVEEDORES ═══════════════════════════════════════════

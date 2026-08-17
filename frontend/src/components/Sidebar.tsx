@@ -3,46 +3,48 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import ThemeToggle from "./ThemeToggle";
 
-interface NavItem { to: string; label: string; icon: string; }
-interface Section { label: string; icon: string; items: NavItem[]; }
+// `modulo` gatea la visibilidad por permisos (undefined = base, siempre visible).
+// `adminOnly` = solo el admin/dueño de la empresa.
+interface NavItem { to: string; label: string; icon: string; modulo?: string; }
+interface Section { label: string; icon: string; items: NavItem[]; adminOnly?: boolean; }
 
 const sections: Section[] = [
   { label: "Inventario", icon: "fa-boxes-stacked", items: [
-    { to: "/inventario/bodegas", label: "Bodegas", icon: "fa-warehouse" },
-    { to: "/inventario/stock", label: "Stock", icon: "fa-clipboard-list" },
-    { to: "/inventario/movimientos", label: "Movimientos", icon: "fa-arrow-right-arrow-left" },
-    { to: "/inventario/transferencias", label: "Transferencias", icon: "fa-right-left" },
-    { to: "/inventario/conteos", label: "Conteos", icon: "fa-pen-to-square" },
-    { to: "/inventario/kardex", label: "Kardex", icon: "fa-book-open" },
-    { to: "/inventario/alertas", label: "Alertas", icon: "fa-triangle-exclamation" },
-    { to: "/inventario/reservas", label: "Reservas", icon: "fa-lock" },
-    { to: "/inventario/lotes", label: "Lotes", icon: "fa-tag" },
-    { to: "/inventario/ubicaciones", label: "Ubicaciones", icon: "fa-location-dot" },
-    { to: "/inventario/reportes", label: "Reportes", icon: "fa-chart-bar" },
+    { to: "/inventario/bodegas", label: "Bodegas", icon: "fa-warehouse", modulo: "inventario" },
+    { to: "/inventario/stock", label: "Stock", icon: "fa-clipboard-list", modulo: "inventario" },
+    { to: "/inventario/movimientos", label: "Movimientos", icon: "fa-arrow-right-arrow-left", modulo: "inventario" },
+    { to: "/inventario/transferencias", label: "Transferencias", icon: "fa-right-left", modulo: "inventario" },
+    { to: "/inventario/conteos", label: "Conteos", icon: "fa-pen-to-square", modulo: "inventario" },
+    { to: "/inventario/kardex", label: "Kardex", icon: "fa-book-open", modulo: "inventario" },
+    { to: "/inventario/alertas", label: "Alertas", icon: "fa-triangle-exclamation", modulo: "inventario" },
+    { to: "/inventario/reservas", label: "Reservas", icon: "fa-lock", modulo: "inventario" },
+    { to: "/inventario/lotes", label: "Lotes", icon: "fa-tag", modulo: "inventario" },
+    { to: "/inventario/ubicaciones", label: "Ubicaciones", icon: "fa-location-dot", modulo: "inventario" },
+    { to: "/inventario/reportes", label: "Reportes", icon: "fa-chart-bar", modulo: "inventario" },
   ]},
   { label: "Compras", icon: "fa-cart-shopping", items: [
-    { to: "/compras/proveedores", label: "Proveedores", icon: "fa-building" },
-    { to: "/compras/solicitudes", label: "Solicitudes", icon: "fa-pen-to-square" },
-    { to: "/compras/ordenes", label: "Órdenes de Compra", icon: "fa-file-invoice" },
-    { to: "/compras/cotizaciones", label: "Cotizaciones", icon: "fa-chart-bar" },
+    { to: "/compras/proveedores", label: "Proveedores", icon: "fa-building", modulo: "compras" },
+    { to: "/compras/solicitudes", label: "Solicitudes", icon: "fa-pen-to-square", modulo: "compras" },
+    { to: "/compras/ordenes", label: "Órdenes de Compra", icon: "fa-file-invoice", modulo: "compras" },
+    { to: "/compras/cotizaciones", label: "Cotizaciones", icon: "fa-chart-bar", modulo: "compras" },
   ]},
   { label: "Ventas", icon: "fa-receipt", items: [
-    { to: "/ventas/clientes", label: "Clientes", icon: "fa-users" },
-    { to: "/ventas/cotizaciones", label: "Cotizaciones", icon: "fa-chart-bar" },
-    { to: "/ventas/pedidos", label: "Pedidos", icon: "fa-file-invoice" },
-    { to: "/ventas/facturas", label: "Facturas", icon: "fa-receipt" },
-    { to: "/ventas/cobranza", label: "Cobranza", icon: "fa-hand-holding-dollar" },
+    { to: "/ventas/clientes", label: "Clientes", icon: "fa-users", modulo: "ventas" },
+    { to: "/ventas/cotizaciones", label: "Cotizaciones", icon: "fa-chart-bar", modulo: "ventas" },
+    { to: "/ventas/pedidos", label: "Pedidos", icon: "fa-file-invoice", modulo: "ventas" },
+    { to: "/ventas/facturas", label: "Facturas", icon: "fa-receipt", modulo: "ventas" },
+    { to: "/ventas/cobranza", label: "Cobranza", icon: "fa-hand-holding-dollar", modulo: "cobranza" },
   ]},
-  { label: "Administración", icon: "fa-gear", items: [
+  { label: "Administración", icon: "fa-gear", adminOnly: true, items: [
     { to: "/admin/usuarios", label: "Usuarios", icon: "fa-users" },
   ]},
 ];
 
 const singleItems: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: "fa-chart-pie" },
-  { to: "/asistente", label: "Asistente IA", icon: "fa-wand-magic-sparkles" },
-  { to: "/pos", label: "Punto de Venta", icon: "fa-cash-register" },
-  { to: "/catalogo/skus", label: "Catálogo SKU", icon: "fa-barcode" },
+  { to: "/asistente", label: "Asistente IA", icon: "fa-wand-magic-sparkles", modulo: "ia" },
+  { to: "/pos", label: "Punto de Venta", icon: "fa-cash-register", modulo: "pos" },
+  { to: "/catalogo/skus", label: "Catálogo SKU", icon: "fa-barcode", modulo: "inventario" },
 ];
 
 const iconStyle: React.CSSProperties = { width: 18, textAlign: "center", fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 };
@@ -53,6 +55,11 @@ export default function Sidebar({ mobile = false, open = false, onClose }: { mob
   const location = useLocation();
   const isAdmin = user?.rol === "admin" || user?.rol === "superadmin";
 
+  // Módulos que este usuario puede ver (capa 1 ∩ capa 2, calculado en el backend).
+  // Un ítem sin `modulo` es base (siempre visible); con `modulo`, requiere permiso.
+  const visibles = new Set(user?.modulos_visibles ?? []);
+  const puedeVer = (modulo?: string) => !modulo || visibles.has(modulo);
+
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     const state: Record<string, boolean> = {};
     sections.forEach((s) => { state[s.label] = s.items.some((item) => location.pathname.startsWith(item.to)); });
@@ -61,7 +68,14 @@ export default function Sidebar({ mobile = false, open = false, onClose }: { mob
 
   const toggleSection = (label: string) => setExpanded((prev) => ({ ...prev, [label]: !prev[label] }));
   const isItemActive = (to: string) => location.pathname.startsWith(to);
-  const sectionDisplay = sections.filter(s => s.label !== "Administración" || isAdmin);
+
+  // Filtra ítems por permiso y descarta secciones que queden vacías (o admin-only
+  // para no-admin).
+  const sectionDisplay = sections
+    .filter((s) => !s.adminOnly || isAdmin)
+    .map((s) => ({ ...s, items: s.items.filter((i) => puedeVer(i.modulo)) }))
+    .filter((s) => s.items.length > 0);
+  const singleDisplay = singleItems.filter((i) => puedeVer(i.modulo));
 
   return (
     <aside style={{
@@ -87,7 +101,7 @@ export default function Sidebar({ mobile = false, open = false, onClose }: { mob
         <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "1.2px", color: "var(--text-muted)", padding: "8px 12px", transition: "var(--transition)" }}>
           Principal
         </div>
-        {singleItems.map((item) => {
+        {singleDisplay.map((item) => {
           const active = isItemActive(item.to);
           return (
             <NavLink key={item.to} to={item.to} onClick={() => { if (mobile) onClose?.(); }} style={{

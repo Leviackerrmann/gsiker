@@ -14,11 +14,13 @@ import asyncio
 import logging
 
 import httpx
-from sqlalchemy import text
+from sqlalchemy import select, text
 
 from app import database
 from app.config import settings
+from app.models.consumo import IaUsoEvento
 from app.services import ia as ia_service
+from app.services import limites as L
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [telegram] %(message)s")
 log = logging.getLogger("telegram")
@@ -46,7 +48,7 @@ async def _empresa_nombre(empresa_id: int) -> str:
         return row[0] if row else "el negocio"
 
 
-async def _responder_ia(empresa_id: int, empresa_nombre: str, chat_id: int, texto: str) -> str:
+async def _responder_ia(empresa_id: int, empresa_nombre: str, chat_id: int, texto: str, idem: str) -> str:
     historial = _historiales.get(chat_id, [])
     async with database.async_session() as db:
         # RLS: fijar la empresa en la transacción para que las tools vean datos.
@@ -55,10 +57,41 @@ async def _responder_ia(empresa_id: int, empresa_nombre: str, chat_id: int, text
                 text("SELECT set_config('app.current_empresa_id', :e, true)"),
                 {"e": str(empresa_id)},
             )
+        sus = await L.obtener_suscripcion_vigente(db, empresa_id)
+        if sus is not None:
+            estado = L.estado_efectivo(sus)
+            if not L.puede_escribir(estado):
+                return "⚠️ Tu suscripción está inactiva. Renová tu plan para seguir usando el asistente."
+            if not L.modulo_habilitado(sus.limites_snapshot, "ia"):
+                return "⚠️ Tu plan no incluye el asistente con IA. Actualizá a Pro para activarlo."
+            for dim in ("requests", "tokens"):
+                r = await L.verificar_limite_ia(db, sus, dim)
+                if r.estado == L.EstadoLimite.EXCEDIDO and r.politica == "bloquear":
+                    return f"⚠️ Alcanzaste el límite de IA ({dim}) de tu plan este período. Renová o esperá al próximo ciclo."
+            ya = await db.execute(
+                select(IaUsoEvento.id).where(
+                    IaUsoEvento.empresa_id == empresa_id, IaUsoEvento.idempotency_key == idem
+                )
+            )
+            if ya.scalar_one_or_none() is not None:
+                return "⚠️ Ese mensaje ya fue procesado."
+
         resultado = await ia_service.chat(db, empresa_id, empresa_nombre, texto, historial=historial)
 
+        if sus is not None:
+            inicio, fin = L.periodo_vigente(sus)
+            uso = resultado.get("uso") or {}
+            await L.registrar_uso_ia(
+                db, empresa_id=empresa_id, usuario_id=None, feature="telegram",
+                modelo=uso.get("modelo"), tokens_in=uso.get("tokens_in", 0),
+                tokens_out=uso.get("tokens_out", 0), idempotency_key=idem,
+                periodo_inicio=inicio, periodo_fin=fin,
+            )
+        await db.commit()
+
     respuesta = resultado.get("respuesta") or "(sin respuesta)"
-    # Guardar contexto (recortado).
+    # Guardar contexto (recortado). Sin reintento automático: cada mensaje de
+    # Telegram tiene su propia clave de idempotencia.
     nuevo = historial + [{"role": "user", "content": texto}, {"role": "assistant", "content": respuesta}]
     _historiales[chat_id] = nuevo[-_HIST_MAX:]
     return respuesta
@@ -88,8 +121,10 @@ async def _procesar_update(http: httpx.AsyncClient, token: str, empresa_id: int,
         await _send(http, token, chat_id, "🧹 Listo, empezamos de cero.")
         return
 
+    # Clave de idempotencia por mensaje de Telegram (id único por chat).
+    idem = f"tg-{chat_id}-{msg.get('message_id')}"
     try:
-        respuesta = await _responder_ia(empresa_id, empresa_nombre, chat_id, texto)
+        respuesta = await _responder_ia(empresa_id, empresa_nombre, chat_id, texto, idem)
     except ia_service.IANoConfigurada as exc:
         respuesta = f"⚠️ El asistente aún no está configurado: {exc}"
     except Exception as exc:  # noqa: BLE001

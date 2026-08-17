@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.dependencies import get_current_empresa, get_current_user, require_admin
+from app.dependencies import get_current_empresa, get_current_user, require_admin, requiere_permiso
 from app.models.empresa import Empresa
 from app.models.inventario import MotivoMovimiento, MovimientoInventario, TipoMovimiento
 from app.models.sku import SKU
@@ -18,7 +18,11 @@ from app.models.ventas import (
 from app.services.inventario import actualizar_stock
 from app.services.ventas import generar_numero_ov, procesar_despacho, generar_factura
 
-router = APIRouter(prefix="/api/ventas", tags=["ventas"])
+router = APIRouter(
+    prefix="/api/ventas",
+    tags=["ventas"],
+    dependencies=[Depends(requiere_permiso("ventas"))],
+)
 
 # ═══ CLIENTES ═══════════════════════════════════════════
 

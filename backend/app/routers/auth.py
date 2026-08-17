@@ -6,8 +6,11 @@ from app import ratelimit
 from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models.empresa import Empresa, EstadoSuscripcion, Plan, Suscripcion
+from app.models.empresa import Empresa, Plan
 from app.models.usuario import RolUsuario, Usuario
+from app.services import limites as L
+from app.services import permisos as permisos_svc
+from app.services.platform import suscripciones as suscripciones_svc
 from app.schemas.auth import (
     ChangePasswordRequest,
     LoginRequest,
@@ -68,9 +71,12 @@ async def register_empresa(body: RegistroEmpresaRequest, db: AsyncSession = Depe
     if dup_user.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El nombre de usuario ya está en uso")
 
-    # Plan por defecto: el gratuito (menor precio) entre los activos.
+    # Plan por defecto del onboarding: el más barato entre los activos no personalizados.
     plan_result = await db.execute(
-        select(Plan).where(Plan.activo).order_by(Plan.precio_mensual).limit(1)
+        select(Plan)
+        .where(Plan.activo, Plan.es_personalizado.is_(False))
+        .order_by(Plan.precio)
+        .limit(1)
     )
     plan = plan_result.scalar_one_or_none()
 
@@ -79,13 +85,13 @@ async def register_empresa(body: RegistroEmpresaRequest, db: AsyncSession = Depe
         nit=body.nit,
         telefono=body.telefono,
         regimen_fiscal=body.regimen_fiscal,
-        plan_id=plan.id if plan else None,
     )
     db.add(empresa)
     await db.flush()
 
+    # Suscripción en modo prueba con snapshot de límites (fija empresa.plan_id).
     if plan is not None:
-        db.add(Suscripcion(empresa_id=empresa.id, plan_id=plan.id, estado=EstadoSuscripcion.ACTIVA))
+        await suscripciones_svc.crear_trial(db, empresa, plan, admin_id=None)
 
     admin = Usuario(
         empresa_id=empresa.id,
@@ -228,9 +234,21 @@ async def twofa_disable(
     return {"message": "2FA desactivado"}
 
 
-@router.get("/me", response_model=UsuarioResponse)
-async def me(current_user: Usuario = Depends(get_current_user)):
-    return current_user
+@router.get("/me")
+async def me(
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Usuario actual + módulos que puede ver (capa 1 ∩ capa 2). El frontend usa
+    `modulos_visibles` para el menú y `modulos_empresa` para la gestión de usuarios."""
+    empresa = await db.get(Empresa, current_user.empresa_id)
+    sus = await L.obtener_suscripcion_vigente(db, current_user.empresa_id)
+    modulos_emp = permisos_svc.modulos_efectivos_empresa(sus, empresa)
+    visibles = permisos_svc.permisos_usuario(current_user, modulos_emp)
+    data = UsuarioResponse.model_validate(current_user).model_dump(mode="json")
+    data["modulos_empresa"] = sorted(modulos_emp)
+    data["modulos_visibles"] = sorted(visibles)
+    return data
 
 
 @router.post("/change-password")

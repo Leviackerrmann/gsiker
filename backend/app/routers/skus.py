@@ -3,12 +3,21 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import get_current_empresa, require_admin
+from app.dependencies import get_current_empresa, get_current_user, require_admin
 from app.models.empresa import Empresa
 from app.models.sku import SKU
+from app.models.usuario import RolUsuario, Usuario
 from app.schemas.sku import SKUCreate, SKUResponse, SKUUpdate
 
 router = APIRouter(prefix="/api/skus", tags=["skus"])
+
+
+def _sku_out(sku: SKU, user: Usuario) -> SKUResponse:
+    """Serializa un SKU ocultando el costo a operadores (dato sensible: márgenes)."""
+    out = SKUResponse.model_validate(sku)
+    if user.rol != RolUsuario.ADMIN:
+        out.costo_unitario = None
+    return out
 
 
 @router.get("", response_model=list[SKUResponse])
@@ -19,6 +28,7 @@ async def list_skus(
     limit: int = Query(100, ge=1, le=500),
     db: AsyncSession = Depends(get_db),
     empresa: Empresa = Depends(get_current_empresa),
+    current_user: Usuario = Depends(get_current_user),
 ):
     stmt = select(SKU).where(SKU.empresa_id == empresa.id)
 
@@ -31,7 +41,7 @@ async def list_skus(
 
     stmt = stmt.order_by(SKU.codigo_sku).offset(skip).limit(limit)
     result = await db.execute(stmt)
-    return result.scalars().all()
+    return [_sku_out(s, current_user) for s in result.scalars().all()]
 
 
 @router.get("/categorias")
@@ -53,6 +63,7 @@ async def get_sku(
     sku_id: int,
     db: AsyncSession = Depends(get_db),
     empresa: Empresa = Depends(get_current_empresa),
+    current_user: Usuario = Depends(get_current_user),
 ):
     result = await db.execute(
         select(SKU).where(SKU.id == sku_id, SKU.empresa_id == empresa.id)
@@ -60,7 +71,7 @@ async def get_sku(
     sku = result.scalar_one_or_none()
     if sku is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="SKU no encontrado")
-    return sku
+    return _sku_out(sku, current_user)
 
 
 @router.post("", response_model=SKUResponse, status_code=status.HTTP_201_CREATED)

@@ -5,7 +5,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models.empresa import Empresa
+from app.models.platform_admin import PlatformAdmin
 from app.models.usuario import Usuario
+from app.services import limites as limites_svc
+from app.services import permisos as permisos_svc
 from app.utils.security import decode_access_token
 
 security_scheme = HTTPBearer()
@@ -19,6 +22,10 @@ async def get_current_user(
     payload = decode_access_token(credentials.credentials)
     if payload is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido o expirado")
+
+    # Frontera de scope: un token de plataforma NO es válido en endpoints de tenant.
+    if payload.get("scope") == "platform":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token de plataforma no válido acá")
 
     user_id_raw = payload.get("sub")
     if user_id_raw is None:
@@ -35,15 +42,31 @@ async def get_current_user(
     return user
 
 
+async def get_platform_admin(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> PlatformAdmin:
+    """Autoriza al superadmin del SaaS. Exige token con `scope=platform`; un token
+    de tenant NO sirve acá (frontera separada)."""
+    payload = decode_access_token(credentials.credentials)
+    if payload is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido o expirado")
+    if payload.get("scope") != "platform":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Se requiere token de plataforma")
+    admin_id_raw = payload.get("sub")
+    if admin_id_raw is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token inválido")
+    admin = await db.get(PlatformAdmin, int(admin_id_raw))
+    if admin is None or not admin.activo:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Admin de plataforma no encontrado o inactivo")
+    request.state.audit_platform_admin_id = admin.id
+    return admin
+
+
 async def require_admin(current_user: Usuario = Depends(get_current_user)) -> Usuario:
-    if current_user.rol.value not in ("superadmin", "admin"):
+    if current_user.rol.value != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso denegado")
-    return current_user
-
-
-async def require_superadmin(current_user: Usuario = Depends(get_current_user)) -> Usuario:
-    if current_user.rol.value != "superadmin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Solo superadmin puede realizar esta acción")
     return current_user
 
 
@@ -83,6 +106,78 @@ async def get_current_empresa(
             {"empresa_id": str(empresa.id)},
         )
 
+    # Resuelve la suscripción vigente y su estado EFECTIVO (calculado, sin cron).
+    # Deja en request.state si puede escribir: vencida/suspendida ⇒ solo lectura
+    # (lo hace cumplir el middleware). Sin suscripción ⇒ no se bloquea (legacy).
+    sus = await limites_svc.obtener_suscripcion_vigente(db, empresa.id)
+    request.state.suscripcion = sus
+    if sus is None:
+        request.state.puede_escribir = True
+        request.state.estado_suscripcion = None
+    else:
+        estado = limites_svc.estado_efectivo(sus)
+        request.state.estado_suscripcion = estado.value
+        request.state.puede_escribir = limites_svc.puede_escribir(estado)
+
     # Deja la empresa resuelta para la auditoría (la lee AuditMiddleware).
     request.state.audit_empresa_id = empresa.id
+    return empresa
+
+
+def requiere_modulo(modulo: str):
+    """Dependency factory: exige que el plan de la empresa incluya `modulo`.
+    Punto único de gate por módulo (p. ej. la IA). Fail-closed."""
+
+    async def _dep(
+        request: Request,
+        empresa: Empresa = Depends(get_current_empresa),
+    ) -> Empresa:
+        sus = getattr(request.state, "suscripcion", None)
+        limites = sus.limites_snapshot if sus else {}
+        if not limites_svc.modulo_habilitado(limites, modulo):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Tu plan no incluye el módulo: {modulo}",
+            )
+        return empresa
+
+    return _dep
+
+
+def requiere_permiso(modulo: str):
+    """Dependency factory: exige que el USUARIO pueda ver `modulo`, componiendo las
+    dos capas (entitlement de la empresa + permiso del operador). Punto único de
+    autorización por módulo. Fail-closed. Reemplaza a `requiere_modulo` para gatear
+    endpoints de tenant (este además chequea el permiso del operador)."""
+
+    async def _dep(
+        request: Request,
+        current_user: Usuario = Depends(get_current_user),
+        empresa: Empresa = Depends(get_current_empresa),
+    ) -> Empresa:
+        sus = getattr(request.state, "suscripcion", None)
+        modulos_emp = permisos_svc.modulos_efectivos_empresa(sus, empresa)
+        if modulo not in modulos_emp:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Tu plan no incluye el módulo: {modulo}",
+            )
+        if not permisos_svc.puede_modulo(modulo, current_user, modulos_emp):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"No tenés permiso para el módulo: {modulo}",
+            )
+        return empresa
+
+    return _dep
+
+
+async def require_escritura(request: Request, empresa: Empresa = Depends(get_current_empresa)) -> Empresa:
+    """Bloquea escrituras cuando la suscripción está vencida/suspendida (solo
+    lectura). Complementa al middleware para endpoints que quieran gatear explícito."""
+    if not getattr(request.state, "puede_escribir", True):
+        raise HTTPException(
+            status_code=status.HTTP_402_PAYMENT_REQUIRED,
+            detail="Tu suscripción está inactiva: modo solo lectura. Podés exportar tus datos.",
+        )
     return empresa

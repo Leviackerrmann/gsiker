@@ -29,6 +29,14 @@ import ReportesPage from "./pages/inventario/Reportes";
 import POSPage from "./pages/pos/POS";
 import CobranzaPage from "./pages/ventas/Cobranza";
 import AsistentePage from "./pages/Asistente";
+import PlatformLogin from "./pages/plataforma/PlatformLogin";
+import Plataforma from "./pages/plataforma/Plataforma";
+import { PLATFORM_TOKEN_KEY } from "./lib/platformApi";
+
+function PlatformRoute({ children }: { children: React.ReactNode }) {
+  if (!localStorage.getItem(PLATFORM_TOKEN_KEY)) return <Navigate to="/plataforma/login" />;
+  return <>{children}</>;
+}
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -47,6 +55,9 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
+      {/* Plataforma (superadmin): frontera separada, su propio token/login. */}
+      <Route path="/plataforma/login" element={<PlatformLogin />} />
+      <Route path="/plataforma" element={<PlatformRoute><Plataforma /></PlatformRoute>} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>

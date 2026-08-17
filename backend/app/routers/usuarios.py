@@ -7,6 +7,8 @@ from app.dependencies import get_current_empresa, require_admin
 from app.models.empresa import Empresa
 from app.models.usuario import RolUsuario, Usuario
 from app.schemas.usuario import UsuarioCreate, UsuarioResponse, UsuarioUpdate
+from app.services import limites as L
+from app.services import permisos as permisos_svc
 from app.utils.security import hash_password, validate_password_strength
 
 router = APIRouter(prefix="/api/usuarios", tags=["usuarios"])
@@ -23,6 +25,12 @@ def _parse_rol_empresa(rol: str) -> RolUsuario:
     if parsed not in ROLES_EMPRESA:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Rol no permitido para una empresa")
     return parsed
+
+
+async def _modulos_empresa(db: AsyncSession, empresa: Empresa) -> set[str]:
+    """Módulos efectivos de la empresa (para acotar los permisos de operadores)."""
+    sus = await L.obtener_suscripcion_vigente(db, empresa.id)
+    return permisos_svc.modulos_efectivos_empresa(sus, empresa)
 
 
 @router.get("", response_model=list[UsuarioResponse])
@@ -60,13 +68,22 @@ async def create_usuario(
         if email_check.scalar_one_or_none():
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El email ya existe")
 
+    rol = _parse_rol_empresa(body.rol)
+    # Admin ⇒ todos los módulos (permisos = None). Operador ⇒ solo los pedidos que
+    # la empresa tenga (permisos ⊆ entitlements).
+    if rol == RolUsuario.ADMIN:
+        permisos = None
+    else:
+        permisos = permisos_svc.sanear_permisos(body.permisos, await _modulos_empresa(db, empresa))
+
     user = Usuario(
         empresa_id=empresa.id,
         username=body.username,
         email=email,
         password_hash=hash_password(body.password),
         nombre_completo=body.nombre_completo,
-        rol=_parse_rol_empresa(body.rol),
+        rol=rol,
+        permisos=permisos,
     )
     db.add(user)
     await db.flush()
@@ -104,6 +121,13 @@ async def update_usuario(
         user.rol = _parse_rol_empresa(body.rol)
     if body.activo is not None:
         user.activo = body.activo
+
+    # Permisos: admin nunca los usa (None). Para operador, se sanea contra los
+    # módulos de la empresa. Un cambio a admin limpia los permisos.
+    if user.rol == RolUsuario.ADMIN:
+        user.permisos = None
+    elif body.permisos is not None:
+        user.permisos = permisos_svc.sanear_permisos(body.permisos, await _modulos_empresa(db, empresa))
 
     await db.flush()
     await db.refresh(user)

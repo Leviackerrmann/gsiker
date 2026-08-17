@@ -37,12 +37,35 @@ class Settings(BaseSettings):
     IA_BASE_URL: str | None = None  # override manual del endpoint (ej. Ollama remoto)
     IA_MAX_TOKENS: int = 1024
     IA_MAX_ITERS: int = 6        # tope de rondas del loop de tools (anti bucle)
+    # Umbral (fracción) para el estado "cerca del límite" si el plan no lo define.
+    LIMITE_UMBRAL_ALERTA: float = 0.8
+    # Días de la prueba gratis al dar de alta una empresa.
+    TRIAL_DIAS: int = 15
     # API keys por proveedor (sólo se necesita la del proveedor activo).
     GROQ_API_KEY: str | None = None
     GEMINI_API_KEY: str | None = None
     OPENROUTER_API_KEY: str | None = None
     OPENAI_API_KEY: str | None = None
     ANTHROPIC_API_KEY: str | None = None
+
+    # Precios de IA por modelo en USD por 1M de tokens (entrada, salida). Se usa
+    # para estimar el costo de cada llamada. Clave = nombre del modelo (o prefijo).
+    # Ajustable sin tocar código. Modelos gratis (Groq/Ollama) → costo 0.
+    IA_PRECIOS_USD_POR_1M: dict[str, tuple[float, float]] = {
+        "claude-opus-4-8": (15.0, 75.0),
+        "claude-sonnet-4-6": (3.0, 15.0),
+        "claude-haiku-4-5": (0.80, 4.0),
+        "gpt-4o-mini": (0.15, 0.60),
+        "gpt-4o": (2.50, 10.0),
+    }
+
+    # --- Plataforma (frontera BYPASSRLS separada) ---
+    # Rol Postgres CON BYPASSRLS para los cruces cross-tenant del panel. Vive en
+    # su propio engine/pool (app/platform/db.py), inalcanzable desde deps de
+    # tenant. Si no se define, cae a MIGRATION_DATABASE_URL/DATABASE_URL (dev).
+    PLATFORM_DATABASE_URL: str | None = None
+    # Contraseña inicial del admin de plataforma (seed). CAMBIAR en prod vía .env.
+    PLATFORM_ADMIN_PASSWORD: str = "cambiar-esta-clave-2026"
 
     # --- Bot de Telegram (canal de chat para el asistente) ---
     TELEGRAM_ENABLED: bool = True
@@ -56,6 +79,11 @@ class Settings(BaseSettings):
     def migration_url(self) -> str:
         """URL para Alembic: la del dueño si está definida, si no la de la app."""
         return self.MIGRATION_DATABASE_URL or self.DATABASE_URL
+
+    @property
+    def platform_url(self) -> str:
+        """URL del engine de plataforma (rol BYPASSRLS). En dev cae al de migración."""
+        return self.PLATFORM_DATABASE_URL or self.migration_url
 
     @property
     def cors_origins_list(self) -> list[str]:

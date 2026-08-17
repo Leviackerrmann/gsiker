@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.dependencies import get_current_empresa, get_current_user
+from app.dependencies import get_current_empresa, get_current_user, require_admin, requiere_permiso
 from app.models.empresa import Empresa
 from app.models.pos import CajaSesion, EstadoVentaPOS, MetodoPago, Pago, VentaPOS
 from app.models.usuario import Usuario
@@ -21,7 +21,11 @@ from app.schemas.pos import (
 from app.services import pos as pos_service
 from app.services.inventario import StockInsuficiente
 
-router = APIRouter(prefix="/api/pos", tags=["pos"])
+router = APIRouter(
+    prefix="/api/pos",
+    tags=["pos"],
+    dependencies=[Depends(requiere_permiso("pos"))],
+)
 
 
 def _bad_request(exc: Exception) -> HTTPException:
@@ -70,7 +74,7 @@ async def cerrar_caja(
     body: CerrarCajaRequest,
     db: AsyncSession = Depends(get_db),
     empresa: Empresa = Depends(get_current_empresa),
-    _current_user: Usuario = Depends(get_current_user),
+    _admin: Usuario = Depends(require_admin),
 ):
     try:
         return await pos_service.cerrar_caja(db, empresa.id, sesion_id, body.monto_final_declarado)

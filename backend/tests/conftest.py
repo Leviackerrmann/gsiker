@@ -13,6 +13,22 @@ from app.models import Base, Plan
 # Por defecto el rate-limiting se desactiva en tests para no acumular estado
 # entre casos; el test dedicado lo activa explícitamente.
 settings.RATE_LIMIT_ENABLED = False
+# El onboarding público está cerrado en prod; en tests lo habilitamos para poder
+# crear empresas de prueba vía register-empresa.
+settings.REGISTRATION_ENABLED = True
+
+# Plan de prueba por defecto: incluye IA con límites generosos (para no gatear
+# los tests que no son de límites). Los tests de límites crean su propio plan.
+LIMITES_TEST = {
+    "usuarios": None,
+    "registros": {"skus": None, "clientes": None},
+    "modulos": ["pos", "inventario", "compras", "ventas", "cobranza", "ia"],
+    "ia": {
+        "requests": {"limite": 1000, "al_exceder": "bloquear"},
+        "tokens": {"limite": 10_000_000, "al_exceder": "bloquear"},
+    },
+    "umbral_alerta": 0.8,
+}
 
 
 @pytest_asyncio.fixture
@@ -30,7 +46,10 @@ async def db_sessionmaker():
 
     # Sembrar un plan por defecto (el onboarding lo asigna).
     async with maker() as session:
-        session.add(Plan(nombre="Emprendedor", precio_mensual=0.0, max_usuarios=2, max_skus=100, activo=True))
+        session.add(Plan(
+            codigo="basico", nombre="Básico", precio=0.0, moneda="GTQ",
+            limites=LIMITES_TEST, activo=True,
+        ))
         await session.commit()
 
     yield maker

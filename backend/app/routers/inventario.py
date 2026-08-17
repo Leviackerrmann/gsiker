@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.dependencies import get_current_empresa, get_current_user, require_admin
+from app.dependencies import get_current_empresa, get_current_user, require_admin, requiere_permiso
 from app.models.empresa import Empresa
 from app.models.inventario import (
     Bodega,
@@ -42,7 +42,11 @@ from app.schemas.inventario import (
 from app.services.inventario import StockInsuficiente, actualizar_stock, crear_transferencia, validar_stock_disponible
 from app.services.valorizacion import calcular_pmp_entrada, generar_kardex
 
-router = APIRouter(prefix="/api/inventario", tags=["inventario"])
+router = APIRouter(
+    prefix="/api/inventario",
+    tags=["inventario"],
+    dependencies=[Depends(requiere_permiso("inventario"))],
+)
 
 
 # ─── BODEGAS ───────────────────────────────────────────────
