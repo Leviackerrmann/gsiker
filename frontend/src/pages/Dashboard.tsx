@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../lib/api";
+import RespaldoBanner from "../components/RespaldoBanner";
 
 interface DashboardData {
   sku_count: number; valor_stock: number; alertas_count: number;
@@ -54,6 +55,7 @@ export default function Dashboard() {
 
   return (
     <div>
+      <RespaldoBanner />
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 28, position: "relative", zIndex: 1 }}>
         <div>
           <h1 style={{ fontFamily: "'Space Grotesk'", fontSize: 26, fontWeight: 700, letterSpacing: "-0.5px", color: "var(--text-primary)", margin: 0 }}>Dashboard</h1>

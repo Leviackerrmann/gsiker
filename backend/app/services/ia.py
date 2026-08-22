@@ -35,7 +35,7 @@ class IANoConfigurada(IAError):
 
 # Endpoints y modelos por defecto de cada proveedor compatible con OpenAI.
 _OPENAI_COMPAT = {
-    "groq": ("https://api.groq.com/openai/v1", "llama-3.3-70b-versatile", "GROQ_API_KEY"),
+    "groq": ("https://api.groq.com/openai/v1", "openai/gpt-oss-120b", "GROQ_API_KEY"),
     "gemini": ("https://generativelanguage.googleapis.com/v1beta/openai/", "gemini-2.0-flash", "GEMINI_API_KEY"),
     "openrouter": ("https://openrouter.ai/api/v1", "meta-llama/llama-3.3-70b-instruct:free", "OPENROUTER_API_KEY"),
     "ollama": ("http://localhost:11434/v1", "llama3.1", None),  # local, sin key

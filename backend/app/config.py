@@ -25,6 +25,24 @@ class Settings(BaseSettings):
     RATE_LIMIT_ENABLED: bool = True
     LOGIN_MAX_ATTEMPTS: int = 10  # por (IP, usuario) dentro de la ventana
     LOGIN_WINDOW_SECONDS: int = 300
+
+    # --- Registro por teléfono/WhatsApp (onboarding sin contraseña) ---
+    # FALSE = modo desarrollo: el código NO se envía por WhatsApp, se loguea en
+    # consola y se devuelve en la respuesta (dev_code) para probar sin proveedor.
+    # TRUE = envío real (requiere credenciales del proveedor abajo).
+    WHATSAPP_ENABLED: bool = False
+    # Proveedor de WhatsApp: "twilio" | "meta" (Cloud API). Solo si WHATSAPP_ENABLED.
+    WHATSAPP_PROVIDER: str = "twilio"
+    WHATSAPP_ACCOUNT_SID: str | None = None      # Twilio
+    WHATSAPP_AUTH_TOKEN: str | None = None       # Twilio
+    WHATSAPP_FROM: str | None = None             # remitente (whatsapp:+... o phone_number_id de Meta)
+    WHATSAPP_META_TOKEN: str | None = None       # Meta Cloud API access token
+    # Vigencia del código OTP y tope de intentos por código.
+    OTP_TTL_SECONDS: int = 600      # 10 minutos
+    OTP_MAX_ATTEMPTS: int = 5
+    OTP_MAX_PER_HOUR: int = 3       # códigos solicitados por número por hora
+    # Registro por Google (id_token). Vacío = deshabilitado (botón "Próximamente").
+    GOOGLE_CLIENT_ID: str | None = None
     # Orígenes CORS separados por coma
     CORS_ORIGINS: str = "http://localhost:5173"
     # --- Asistente IA (proveedor configurable) ---

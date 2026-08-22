@@ -1,6 +1,6 @@
 from app.models.base import Base
 from app.models.mixins import TenantMixin
-from app.models.usuario import Usuario, RolUsuario
+from app.models.usuario import Usuario, RolUsuario, AuthMethod, VerificacionTelefono
 from app.models.platform_admin import PlatformAdmin
 from app.models.empresa import Empresa, Plan, Suscripcion, RegimenFiscal, EstadoSuscripcion, IntervaloPlan
 from app.models.consumo import IaUsoEvento, IaUsoContador

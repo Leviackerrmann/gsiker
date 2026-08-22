@@ -1,97 +1,90 @@
 import { useEffect, useState } from "react";
 import api from "../../lib/api";
+import { formatMoney } from "../../lib/money";
+
+type Tab = "valorizado" | "rotacion" | "sin-mov";
 
 export default function ReportesPage() {
-  const [tab, setTab] = useState<"valorizado" | "rotacion" | "sin-mov">("valorizado");
+  const [tab, setTab] = useState<Tab>("valorizado");
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const fetchData = () => {
-    setLoading(true);
-    setError("");
-    const endpoint =
-      tab === "valorizado" ? "/inventario/reportes/valorizado"
-      : tab === "rotacion" ? "/inventario/reportes/rotacion"
-      : "/inventario/reportes/sin-movimiento";
-    api.get(endpoint)
-      .then((res) => { setData(res.data); setLoading(false); })
-      .catch((err) => { setError(err.response?.data?.detail || "Error al cargar el reporte"); setLoading(false); });
+    setLoading(true); setError("");
+    const endpoint = tab === "valorizado" ? "/inventario/reportes/valorizado" : tab === "rotacion" ? "/inventario/reportes/rotacion" : "/inventario/reportes/sin-movimiento";
+    api.get(endpoint).then((res) => { setData(res.data); setLoading(false); }).catch((err) => { setError(err.response?.data?.detail || "Error al cargar el reporte"); setLoading(false); });
   };
-
   useEffect(() => { fetchData(); }, [tab]);
 
-  return (
-    <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)", marginBottom: 20 }}>Reportes de Inventario</h2>
+  const tabs: { key: Tab; label: string }[] = [
+    { key: "valorizado", label: "Stock valorizado" },
+    { key: "rotacion", label: "Rotación (30d)" },
+    { key: "sin-mov", label: "Sin movimiento (60d)" },
+  ];
 
-      <div style={{ display: "flex", gap: 0, marginBottom: 20 }}>
-        {(["valorizado","rotacion","sin-mov"] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)} style={{ ...tabBtn, borderBottom: tab === t ? "2px solid #6366f1" : "2px solid transparent", color: tab === t ? "#6366f1" : "#6b7280" }}>
-            {t === "valorizado" ? "Stock Valorizado" : t === "rotacion" ? "Rotación (30d)" : "Sin Movimiento (60d)"}
-          </button>
-        ))}
+  return (
+    <div style={{ animation: "fadeInUp .45s ease forwards" }}>
+      <div className="ui-head">
+        <div><h1 className="ui-title">Reportes de inventario</h1><p className="ui-subtitle">Valorización, rotación y productos sin movimiento</p></div>
       </div>
 
-      <div style={card}>
-        {loading ? (
-          <p style={{ color: "var(--text-secondary)", textAlign: "center", padding: 20 }}>Cargando...</p>
-        ) : error ? (
-          <div style={{ textAlign: "center", padding: 30 }}>
-            <p style={{ color: "var(--danger)", fontSize: 14, marginBottom: 12 }}>{error}</p>
-            <button onClick={fetchData} style={btnRetry}>Reintentar</button>
-          </div>
-        ) : !data ? (
-          <p style={{ color: "var(--text-secondary)", textAlign: "center", padding: 20 }}>Sin datos disponibles</p>
-        ) : tab === "valorizado" ? (
-          <div>
-            <h3 style={{ fontSize: 15, marginBottom: 12, color: "var(--success)" }}>Valor Total Inventario: ${data.valor_total_inventario?.toLocaleString?.() ?? "0"}</h3>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-                <th style={th}>Código</th><th style={th}>Descripción</th><th style={th}>Cat.</th><th style={{ ...th, textAlign: "right" }}>Cant.</th><th style={{ ...th, textAlign: "right" }}>Costo U.</th><th style={{ ...th, textAlign: "right" }}>Valor Total</th>
-              </tr></thead>
-              <tbody>
-                {Array.isArray(data.items) && data.items.length > 0 ? data.items.map((it: any, i: number) => (
-                  <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                    <td style={{ ...td, fontWeight: 600, color: "var(--primary)" }}>{it.codigo_sku}</td>
-                    <td style={td}>{it.descripcion}</td><td style={td}>{it.categoria || "-"}</td>
-                    <td style={{ ...td, textAlign: "right" }}>{(it.cantidad ?? 0).toLocaleString()}</td>
-                    <td style={{ ...td, textAlign: "right" }}>${(it.costo_unitario ?? 0).toFixed(2)}</td>
-                    <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>${(it.valor_total ?? 0).toFixed(2)}</td>
-                  </tr>
-                )) : <tr><td colSpan={6} style={td}>Sin datos</td></tr>}
-              </tbody>
-            </table>
-          </div>
+      <div className="ui-toolbar">
+        <div className="ui-chips">{tabs.map((t) => <button key={t.key} className={`ui-chip ${tab === t.key ? "active" : ""}`} onClick={() => setTab(t.key)}>{t.label}</button>)}</div>
+      </div>
+
+      {tab === "valorizado" && data && !loading && !error && (
+        <div className="ui-stats" style={{ gridTemplateColumns: "minmax(260px, 360px)" }}>
+          <div className="ui-stat ui-stat-dark"><div className="ui-stat-top"><span className="ui-stat-lbl">Valor total del inventario</span><i className="fas fa-sack-dollar" /></div><div className="ui-stat-val">{formatMoney(data.valor_total_inventario ?? 0, "GTQ")}</div><div className="ui-stat-foot">{Array.isArray(data.items) ? data.items.length : 0} productos valorizados</div></div>
+        </div>
+      )}
+
+      <div className="ui-table-wrap">
+        {loading ? <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>Cargando...</div>
+        : error ? <div style={{ textAlign: "center", padding: 30 }}><p style={{ color: "var(--danger)", fontSize: 14, marginBottom: 12 }}>{error}</p><button onClick={fetchData} className="ui-btn-primary">Reintentar</button></div>
+        : !data ? <div style={{ textAlign: "center", padding: 30, color: "var(--text-muted)" }}>Sin datos disponibles</div>
+        : tab === "valorizado" ? (
+          <table className="ui-table">
+            <thead><tr><th>Código</th><th>Descripción</th><th>Categoría</th><th style={{ textAlign: "right" }}>Cant.</th><th style={{ textAlign: "right" }}>Costo U.</th><th style={{ textAlign: "right" }}>Valor total</th></tr></thead>
+            <tbody>
+              {Array.isArray(data.items) && data.items.length > 0 ? data.items.map((it: any, i: number) => (
+                <tr key={i} style={{ borderBottom: "1px solid var(--row-border)" }}>
+                  <td><span className="ui-code">{it.codigo_sku}</span></td>
+                  <td style={{ color: "var(--text-primary)", fontWeight: 500 }}>{it.descripcion}</td>
+                  <td>{it.categoria || "—"}</td>
+                  <td style={{ textAlign: "right" }} className="ui-mono">{(it.cantidad ?? 0).toLocaleString()}</td>
+                  <td style={{ textAlign: "right" }} className="ui-mono">{formatMoney(it.costo_unitario ?? 0, "GTQ")}</td>
+                  <td style={{ textAlign: "right", fontWeight: 700 }} className="ui-mono">{formatMoney(it.valor_total ?? 0, "GTQ")}</td>
+                </tr>
+              )) : <tr><td colSpan={6} className="ui-empty"><i className="fas fa-chart-pie" />Sin datos</td></tr>}
+            </tbody>
+          </table>
         ) : tab === "rotacion" ? (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-              <th style={th}>SKU</th><th style={th}>Descripción</th><th style={{ ...th, textAlign: "right" }}>Entradas</th><th style={{ ...th, textAlign: "right" }}>Salidas</th>
-            </tr></thead>
+          <table className="ui-table">
+            <thead><tr><th>SKU</th><th>Descripción</th><th style={{ textAlign: "right" }}>Entradas</th><th style={{ textAlign: "right" }}>Salidas</th></tr></thead>
             <tbody>
               {Array.isArray(data) && data.length > 0 ? data.map((r: any, i: number) => (
-                <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ ...td, fontWeight: 600, color: "var(--primary)" }}>{r.codigo_sku}</td>
-                  <td style={td}>{r.descripcion}</td>
-                  <td style={{ ...td, textAlign: "right", color: "var(--success)" }}>{(r.entradas ?? 0).toLocaleString()}</td>
-                  <td style={{ ...td, textAlign: "right", color: "var(--danger)" }}>{(r.salidas ?? 0).toLocaleString()}</td>
+                <tr key={i} style={{ borderBottom: "1px solid var(--row-border)" }}>
+                  <td><span className="ui-code">{r.codigo_sku}</span></td>
+                  <td style={{ color: "var(--text-primary)", fontWeight: 500 }}>{r.descripcion}</td>
+                  <td style={{ textAlign: "right", color: "var(--success-text)" }} className="ui-mono">{(r.entradas ?? 0).toLocaleString()}</td>
+                  <td style={{ textAlign: "right", color: "var(--danger)" }} className="ui-mono">{(r.salidas ?? 0).toLocaleString()}</td>
                 </tr>
-              )) : <tr><td colSpan={4} style={td}>Sin movimientos en el período</td></tr>}
+              )) : <tr><td colSpan={4} className="ui-empty"><i className="fas fa-arrows-rotate" />Sin movimientos en el período</td></tr>}
             </tbody>
           </table>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-              <th style={th}>SKU</th><th style={th}>Descripción</th><th style={th}>Bodega</th><th style={{ ...th, textAlign: "right" }}>Stock Actual</th>
-            </tr></thead>
+          <table className="ui-table">
+            <thead><tr><th>SKU</th><th>Descripción</th><th>Bodega</th><th style={{ textAlign: "right" }}>Stock actual</th></tr></thead>
             <tbody>
               {Array.isArray(data) && data.length > 0 ? data.map((r: any, i: number) => (
-                <tr key={i} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ ...td, fontWeight: 600, color: "var(--primary)" }}>{r.codigo_sku}</td>
-                  <td style={td}>{r.descripcion}</td><td style={td}>{r.bodega}</td>
-                  <td style={{ ...td, textAlign: "right", fontWeight: 600 }}>{(r.cantidad ?? 0).toLocaleString()}</td>
+                <tr key={i} style={{ borderBottom: "1px solid var(--row-border)" }}>
+                  <td><span className="ui-code">{r.codigo_sku}</span></td>
+                  <td style={{ color: "var(--text-primary)", fontWeight: 500 }}>{r.descripcion}</td>
+                  <td>{r.bodega}</td>
+                  <td style={{ textAlign: "right", fontWeight: 700 }} className="ui-mono">{(r.cantidad ?? 0).toLocaleString()}</td>
                 </tr>
-              )) : <tr><td colSpan={4} style={td}>Todos los productos tienen movimiento reciente</td></tr>}
+              )) : <tr><td colSpan={4} className="ui-empty"><i className="fas fa-box" />Todos los productos tienen movimiento reciente</td></tr>}
             </tbody>
           </table>
         )}
@@ -99,9 +92,3 @@ export default function ReportesPage() {
     </div>
   );
 }
-
-const card: React.CSSProperties = { background: "var(--surface)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow)", overflowX: "auto" };
-const tabBtn: React.CSSProperties = { background: "none", border: "none", padding: "10px 20px", cursor: "pointer", fontSize: 14, fontWeight: 600, fontFamily: "inherit" };
-const btnRetry: React.CSSProperties = { padding: "8px 20px", background: "var(--primary)", color: "#fff", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const th: React.CSSProperties = { padding: "10px 12px", textAlign: "left", fontSize: 12, color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600 };
-const td: React.CSSProperties = { padding: "10px 12px", fontSize: 14 };

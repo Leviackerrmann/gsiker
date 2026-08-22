@@ -8,6 +8,10 @@ interface AuthContextType {
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   registerEmpresa: (datos: RegistroEmpresa) => Promise<void>;
+  /** Inicia sesión con un token ya emitido (registro por teléfono/Google). */
+  establecerToken: (token: string) => Promise<User>;
+  /** Recarga el usuario/empresa actuales (p. ej. tras crear el negocio). */
+  refrescarSesion: () => Promise<User>;
   logout: () => void;
 }
 
@@ -48,11 +52,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const finalizarLogin = async (token: string) => {
+  const finalizarLogin = async (token: string): Promise<User> => {
     localStorage.setItem("token", token);
     const { user, empresa } = await cargarSesion();
     setUser(user);
     setEmpresa(empresa);
+    return user;
   };
 
   const login = async (username: string, password: string) => {
@@ -65,6 +70,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await finalizarLogin(res.data.access_token);
   };
 
+  // Registro por teléfono/Google: el backend ya devolvió un token (el usuario
+  // puede aún NO tener empresa; en ese caso se le pedirá crear su negocio).
+  const establecerToken = (token: string) => finalizarLogin(token);
+
+  // Recarga la sesión con el token actual (tras crear el negocio, para que
+  // aparezca la empresa y sus módulos).
+  const refrescarSesion = async (): Promise<User> => {
+    const { user, empresa } = await cargarSesion();
+    setUser(user);
+    setEmpresa(empresa);
+    return user;
+  };
+
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
@@ -72,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, empresa, loading, login, registerEmpresa, logout }}>
+    <AuthContext.Provider value={{ user, empresa, loading, login, registerEmpresa, establecerToken, refrescarSesion, logout }}>
       {children}
     </AuthContext.Provider>
   );

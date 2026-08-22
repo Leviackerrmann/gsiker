@@ -170,17 +170,20 @@ export default function Sidebar({ mobile = false, open = false, onClose }: { mob
       </div>
 
       <div style={{ padding: "16px", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12, transition: "var(--transition)" }}>
-        <div style={{ width: 36, height: 36, borderRadius: 8, background: "linear-gradient(135deg, var(--avatar-grad-start), var(--avatar-grad-end))", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, color: "#fff", flexShrink: 0, transition: "all .5s ease" }}>
-          {user?.nombre_completo?.[0]?.toUpperCase() || "U"}
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", transition: "var(--transition)" }}>
-            {user?.nombre_completo}
+        <button onClick={() => navigate("/cuenta")} title="Mi cuenta"
+          style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 12, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
+          <div style={{ width: 36, height: 36, borderRadius: 8, background: "linear-gradient(135deg, var(--avatar-grad-start), var(--avatar-grad-end))", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14, color: "#fff", flexShrink: 0, transition: "all .5s ease" }}>
+            {user?.nombre_completo?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || "U"}
           </div>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "capitalize", transition: "var(--transition)" }}>
-            {user?.rol}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", transition: "var(--transition)" }}>
+              {user?.nombre_completo || user?.username || "Mi cuenta"}
+            </div>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "capitalize", transition: "var(--transition)" }}>
+              {user?.rol}
+            </div>
           </div>
-        </div>
+        </button>
         <button onClick={() => { logout(); navigate("/login"); }} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4, display: "flex" }} title="Cerrar sesión">
           <i className="fas fa-right-from-bracket" style={{ fontSize: 14 }} />
         </button>

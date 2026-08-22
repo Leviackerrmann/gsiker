@@ -33,6 +33,9 @@ services:
       JWT_ALGORITHM: ${JWT_ALGORITHM:-HS256}
       JWT_EXPIRE_MINUTES: ${JWT_EXPIRE_MINUTES:-60}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173,http://localhost:8080}
+      # Onboarding público de empresas. Cerrado por defecto; en local se abre
+      # para trabajar el registro (REGISTRATION_ENABLED=true docker compose up -d backend).
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-false}
       # Asistente IA (proveedor gratis por defecto: Groq).
       IA_PROVIDER: ${IA_PROVIDER:-groq}
       IA_MODEL: ${IA_MODEL:-}

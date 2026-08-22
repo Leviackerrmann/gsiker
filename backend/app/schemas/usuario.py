@@ -25,9 +25,11 @@ class UsuarioUpdate(BaseModel):
 class UsuarioResponse(BaseModel):
     id: int
     empresa_id: int | None
-    username: str
+    username: str | None
+    phone_number: str | None = None
+    auth_method: str | None = None
     email: str | None
-    nombre_completo: str
+    nombre_completo: str | None
     rol: str
     permisos: list[str] | None
     activo: bool

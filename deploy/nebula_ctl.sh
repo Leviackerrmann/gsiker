@@ -60,6 +60,20 @@ wait_health() {  # $1 = puerto backend
     return 1
 }
 
+# Pone el modo mantenimiento (503 para todo el publico) en on|off flipeando la
+# linea `set $maint N;  # NEBULA_MAINT`. Preserva el inode (cat truncate-in-place)
+# para que el contenedor router vea el cambio con un simple `nginx -s reload`.
+# Requiere que la conf ya tenga el guard de mantenimiento inyectado.
+router_set_maint() {
+    local val="$1" tmp
+    grep -q '# NEBULA_MAINT' "$ROUTER_CONF" || {
+        echo "ERROR: la conf del router no tiene el guard de mantenimiento (# NEBULA_MAINT)."; return 1; }
+    tmp=$(mktemp)
+    sed -E "/# NEBULA_MAINT/ s#set \\\$maint [0-9]+;#set \$maint $val;#" "$ROUTER_CONF" > "$tmp"
+    cat "$tmp" > "$ROUTER_CONF"
+    rm -f "$tmp"
+}
+
 # Reescribe el router a (front, back) SIN cambiar el inode del archivo.
 # `sed -i` renombra un temporal (nuevo inode) y rompe el bind-mount de archivo
 # único del contenedor; con truncate-in-place (`cat >`) el contenedor sí ve el cambio.
@@ -97,6 +111,32 @@ case "${1:-help}" in
 
     active)   get_active ;;
     inactive) get_inactive ;;
+
+    maintenance)
+        sub="${2:-status}"
+        case "$sub" in
+            on|off)
+                [ "$sub" = on ] && val=1 || val=0
+                router_set_maint "$val" || exit 1
+                if compose_infra exec -T router nginx -t >/dev/null 2>&1; then
+                    compose_infra exec -T router nginx -s reload
+                    [ "$val" = 1 ] && echo "==> Mantenimiento ON: prod responde 503 a todo el publico." \
+                                   || echo "==> Mantenimiento OFF: prod vuelve al color activo ($(get_active))."
+                else
+                    echo "ERROR: config de nginx invalida; NO se recargo. Revisa $ROUTER_CONF"; exit 1
+                fi
+                ;;
+            status)
+                v=$(grep -oE 'set \$maint [0-9]+' "$ROUTER_CONF" 2>/dev/null | grep -oE '[0-9]+$' | head -1)
+                case "$v" in
+                    1) echo "Mantenimiento: ON (503 al publico)";;
+                    0) echo "Mantenimiento: OFF (sirviendo normal)";;
+                    *) echo "Mantenimiento: sin guard instalado en el router";;
+                esac
+                ;;
+            *) echo "Uso: nebula_ctl.sh maintenance {on|off|status}"; exit 1;;
+        esac
+        ;;
 
     infra)
         # Levanta la capa compartida (db + router). Requiere .env con secretos reales,
@@ -196,6 +236,7 @@ Uso: nebula_ctl.sh {status|active|inactive|infra|deploy <color>|switch|rollback}
   active     Imprime el color activo
   inactive   Imprime el color inactivo (destino del próximo deploy)
   infra      Levanta la capa compartida (db + router)
+  maintenance {on|off|status}  Modo mantenimiento: 503 al publico sin apagar la app
   deploy X   Construye/levanta el color X y valida health (NO conmuta tráfico)
   switch     Conmuta el tráfico al color inactivo (blue <-> green)
   rollback   Vuelve al color previo

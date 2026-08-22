@@ -1,13 +1,18 @@
 export interface User {
   id: number;
   empresa_id: number | null;
-  username: string;
+  username: string | null;
+  phone_number?: string | null;
+  auth_method?: string | null;
   email: string | null;
-  nombre_completo: string;
+  nombre_completo: string | null;
   rol: string;
   permisos?: string[] | null;
   activo: boolean;
   fecha_creacion: string;
+  // Métodos de acceso disponibles (para "Mi cuenta" y el banner de respaldo).
+  has_password?: boolean;
+  has_google?: boolean;
   // Devueltos por /auth/me: módulos que la empresa tiene (capa 1) y los que este
   // usuario puede ver (capa 1 ∩ capa 2). Usados para gatear el menú.
   modulos_empresa?: string[];
@@ -116,7 +121,7 @@ export interface SKU {
   descripcion: string;
   unidad_medida: string;
   precio_referencia: number;
-  costo_unitario: number;
+  costo_unitario: number | null; // null para operadores (el backend oculta el costo)
   metodo_valorizacion: string;
   categoria: string | null;
   subcategoria: string | null;

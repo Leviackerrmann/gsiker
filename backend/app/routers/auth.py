@@ -7,14 +7,19 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.empresa import Empresa, Plan
-from app.models.usuario import RolUsuario, Usuario
+from app.models.usuario import AuthMethod, RolUsuario, Usuario
 from app.services import limites as L
 from app.services import permisos as permisos_svc
 from app.services.platform import suscripciones as suscripciones_svc
 from app.schemas.auth import (
     ChangePasswordRequest,
+    GoogleAuthRequest,
     LoginRequest,
     LoginResponse,
+    PhoneSendCodeRequest,
+    PhoneSendCodeResponse,
+    PhoneVerifyRequest,
+    SetPasswordRequest,
     TokenResponse,
     TwoFALoginRequest,
     TwoFASetupResponse,
@@ -22,6 +27,8 @@ from app.schemas.auth import (
 )
 from app.schemas.empresa import RegistroEmpresaRequest
 from app.schemas.usuario import UsuarioResponse
+from app.services import google_auth as google_svc
+from app.services import verificacion as verif_svc
 from app.utils.security import (
     create_access_token,
     create_twofa_token,
@@ -112,7 +119,112 @@ async def register_empresa(body: RegistroEmpresaRequest, db: AsyncSession = Depe
 async def registration_status():
     """Estado público del onboarding: el frontend lo usa para mostrar u ocultar
     el registro. Solo devuelve un booleano; no expone nada sensible."""
-    return {"enabled": settings.REGISTRATION_ENABLED}
+    return {
+        "enabled": settings.REGISTRATION_ENABLED,
+        "google_enabled": bool(settings.GOOGLE_CLIENT_ID),
+    }
+
+
+# --- Onboarding por teléfono/WhatsApp (sin contraseña) ---
+
+@router.post("/phone/send-code", response_model=PhoneSendCodeResponse)
+async def phone_send_code(request: Request, body: PhoneSendCodeRequest, db: AsyncSession = Depends(get_db)):
+    """Paso 1a: envía un código de 6 dígitos por WhatsApp al número indicado."""
+    phone = verif_svc.normalizar_telefono(body.country_code, body.phone_number)
+
+    # Anti abuso: máximo N códigos por número por hora (+ límite por IP). Solo se
+    # aplica cuando el envío es REAL (WhatsApp activo); en desarrollo (código en
+    # consola, sin costo) no throttlea para no estorbar las pruebas.
+    if settings.RATE_LIMIT_ENABLED and settings.WHATSAPP_ENABLED:
+        ratelimit.enforce(f"otp_send:{phone}", settings.OTP_MAX_PER_HOUR, 3600)
+        ratelimit.enforce(f"otp_send_ip:{_client_ip(request)}", settings.OTP_MAX_PER_HOUR * 5, 3600)
+
+    code = await verif_svc.crear_codigo(db, phone)
+    await verif_svc.enviar_whatsapp(phone, code)
+
+    # En desarrollo (WhatsApp deshabilitado) devolvemos el código para probar fácil.
+    dev_code = None if settings.WHATSAPP_ENABLED else code
+    return PhoneSendCodeResponse(phone_number=phone, dev_code=dev_code)
+
+
+@router.post("/phone/verify", response_model=TokenResponse)
+async def phone_verify(request: Request, body: PhoneVerifyRequest, db: AsyncSession = Depends(get_db)):
+    """Paso 1b: valida el código. Crea (o recupera) el usuario y devuelve un JWT.
+    El usuario aún puede NO tener empresa: el negocio se crea en el paso 2."""
+    phone = body.phone_number.strip()
+
+    if settings.RATE_LIMIT_ENABLED:
+        ratelimit.enforce(f"otp_verify:{_client_ip(request)}", settings.LOGIN_MAX_ATTEMPTS, settings.LOGIN_WINDOW_SECONDS)
+
+    if not await verif_svc.verificar_codigo(db, phone, body.code):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Código inválido o expirado.")
+
+    result = await db.execute(select(Usuario).where(Usuario.phone_number == phone))
+    user = result.scalar_one_or_none()
+    if user is None:
+        # Alta nueva: respeta el interruptor de registro (los usuarios ya
+        # existentes sí pueden seguir entrando aunque el registro esté cerrado).
+        if not settings.REGISTRATION_ENABLED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="El registro está deshabilitado temporalmente.",
+            )
+        user = Usuario(
+            phone_number=phone,
+            auth_method=AuthMethod.PHONE.value,
+            rol=RolUsuario.ADMIN,  # dueño de su propio negocio (se confirma al crearlo)
+        )
+        db.add(user)
+        await db.flush()
+    elif not user.activo:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario inactivo.")
+
+    request.state.audit_user_id = user.id
+    request.state.audit_accion = "register_phone" if user.empresa_id is None else "login_phone"
+    return TokenResponse(access_token=_issue_access_token(user))
+
+
+# --- Onboarding por Google (sin contraseña) ---
+
+@router.post("/google", response_model=TokenResponse)
+async def google_auth(request: Request, body: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
+    """Registra o vincula al usuario con su cuenta de Google y devuelve un JWT.
+    Google ya verificó el email, así que no hay paso de código."""
+    perfil = await google_svc.verificar_google_token(body.token)
+    google_id = perfil["sub"]
+    email = perfil.get("email")
+    nombre = perfil.get("name")
+
+    # 1) por google_id; 2) por email (vincula una cuenta previa); 3) crear.
+    result = await db.execute(select(Usuario).where(Usuario.google_id == google_id))
+    user = result.scalar_one_or_none()
+    if user is None and email:
+        result = await db.execute(select(Usuario).where(Usuario.email == email))
+        user = result.scalar_one_or_none()
+        if user is not None:
+            user.google_id = google_id  # vincula Google a la cuenta existente
+
+    if user is None:
+        if not settings.REGISTRATION_ENABLED:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="El registro está deshabilitado temporalmente.",
+            )
+        user = Usuario(
+            google_id=google_id,
+            email=email,
+            nombre_completo=nombre,
+            auth_method=AuthMethod.GOOGLE.value,
+            rol=RolUsuario.ADMIN,
+        )
+        db.add(user)
+        await db.flush()
+    elif not user.activo:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario inactivo.")
+
+    request.state.audit_user_id = user.id
+    request.state.audit_accion = "register_google" if user.empresa_id is None else "login_google"
+    return TokenResponse(access_token=_issue_access_token(user))
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -241,11 +353,21 @@ async def me(
 ):
     """Usuario actual + módulos que puede ver (capa 1 ∩ capa 2). El frontend usa
     `modulos_visibles` para el menú y `modulos_empresa` para la gestión de usuarios."""
+    data = UsuarioResponse.model_validate(current_user).model_dump(mode="json")
+    # Métodos de acceso disponibles (para la página "Mi cuenta" y el banner de respaldo).
+    data["has_password"] = bool(current_user.password_hash)
+    data["has_google"] = bool(current_user.google_id)
+    # Usuario recién registrado (por teléfono/Google) que aún no creó su negocio:
+    # no tiene empresa ni módulos; el frontend lo manda a /register/business.
+    if current_user.empresa_id is None:
+        data["modulos_empresa"] = []
+        data["modulos_visibles"] = []
+        return data
+
     empresa = await db.get(Empresa, current_user.empresa_id)
     sus = await L.obtener_suscripcion_vigente(db, current_user.empresa_id)
     modulos_emp = permisos_svc.modulos_efectivos_empresa(sus, empresa)
     visibles = permisos_svc.permisos_usuario(current_user, modulos_emp)
-    data = UsuarioResponse.model_validate(current_user).model_dump(mode="json")
     data["modulos_empresa"] = sorted(modulos_emp)
     data["modulos_visibles"] = sorted(visibles)
     return data
@@ -264,3 +386,41 @@ async def change_password(
     current_user.password_hash = hash_password(body.new_password)
     await db.flush()
     return {"message": "Contraseña actualizada"}
+
+
+@router.post("/set-password")
+async def set_password(
+    body: SetPasswordRequest,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Agrega usuario + contraseña como método de respaldo a una cuenta que entró
+    por teléfono/Google (sin credenciales). Así el usuario puede entrar aunque
+    pierda el teléfono. Si ya tiene contraseña, debe usar /change-password."""
+    if current_user.password_hash:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ya tienes una contraseña. Usa 'cambiar contraseña'.",
+        )
+
+    username = (body.username or "").strip()
+    if len(username) < 3:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El usuario debe tener al menos 3 caracteres.")
+
+    dup = await db.execute(select(Usuario).where(Usuario.username == username, Usuario.id != current_user.id))
+    if dup.scalar_one_or_none():
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ese usuario ya está en uso.")
+
+    email = (body.email or "").strip() or None
+    if email:
+        dupe = await db.execute(select(Usuario).where(Usuario.email == email, Usuario.id != current_user.id))
+        if dupe.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ese email ya está en uso.")
+
+    validate_password_strength(body.password)
+    current_user.username = username
+    current_user.password_hash = hash_password(body.password)
+    if email:
+        current_user.email = email
+    await db.flush()
+    return {"message": "Método de acceso agregado"}

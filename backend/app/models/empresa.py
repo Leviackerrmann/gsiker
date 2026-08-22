@@ -75,6 +75,9 @@ class Empresa(Base):
     nombre: Mapped[str] = mapped_column(String(200), unique=True, nullable=False)
     nombre_comercial: Mapped[str] = mapped_column(String(200), nullable=True)
     nit: Mapped[str] = mapped_column(String(20), nullable=True)
+    # Datos livianos del alta rápida (nada tributario; eso va en configuración).
+    tipo_negocio: Mapped[str] = mapped_column(String(50), nullable=True)
+    ciudad: Mapped[str] = mapped_column(String(120), nullable=True)
     direccion: Mapped[str] = mapped_column(String(255), nullable=True)
     telefono: Mapped[str] = mapped_column(String(50), nullable=True)
     email: Mapped[str] = mapped_column(String(255), nullable=True)

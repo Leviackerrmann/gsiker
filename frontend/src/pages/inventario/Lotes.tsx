@@ -1,153 +1,129 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "../../lib/api";
+import Modal from "../../components/Modal";
+import { useToast } from "../../components/Toast";
 
-import Badge from "../../components/Badge";
-interface Lote {
-  id: number; sku_id: number; sku_codigo: string; numero_lote: string;
-  fecha_fabricacion: string | null; fecha_vencimiento: string | null;
-  activo: boolean; created_at: string;
-}
-
-interface LoteAlerta {
-  id: number; sku_id: number; sku_codigo: string; sku_descripcion: string;
-  numero_lote: string; fecha_vencimiento: string; dias_restantes: number;
-}
-
+interface Lote { id: number; sku_id: number; sku_codigo: string; numero_lote: string; fecha_fabricacion: string | null; fecha_vencimiento: string | null; activo: boolean; created_at: string; }
+interface LoteAlerta { id: number; sku_id: number; sku_codigo: string; sku_descripcion: string; numero_lote: string; fecha_vencimiento: string; dias_restantes: number; }
 interface SKUItem { id: number; codigo_sku: string; descripcion: string; maneja_lotes: boolean; }
 
+const fmtFecha = (s: string | null) => s ? new Date(s).toLocaleDateString("es-GT", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
 export default function LotesPage() {
+  const toast = useToast();
   const [lotes, setLotes] = useState<Lote[]>([]);
   const [alertas, setAlertas] = useState<LoteAlerta[]>([]);
   const [skus, setSkus] = useState<SKUItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<"lotes" | "alertas">("lotes");
+
   const [showForm, setShowForm] = useState(false);
   const [skuId, setSkuId] = useState("");
   const [numeroLote, setNumeroLote] = useState("");
   const [fechaFab, setFechaFab] = useState("");
   const [fechaVenc, setFechaVenc] = useState("");
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<"lotes" | "alertas">("lotes");
 
   const load = async () => {
-    const [lRes, aRes] = await Promise.all([
-      api.get("/inventario/lotes"),
-      api.get("/inventario/lotes/alertas-vencimiento"),
-    ]);
-    setLotes(lRes.data);
-    setAlertas(aRes.data);
-    setLoading(false);
+    const [lRes, aRes] = await Promise.all([api.get("/inventario/lotes"), api.get("/inventario/lotes/alertas-vencimiento")]);
+    setLotes(lRes.data); setAlertas(aRes.data); setLoading(false);
   };
-
-  useEffect(() => {
-    api.get("/skus?limit=300").then((res) => setSkus(res.data));
-    load();
-  }, []);
+  useEffect(() => { api.get("/skus?limit=300").then((res) => setSkus(res.data)); load(); }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
+    e.preventDefault(); setError("");
     try {
-      await api.post("/inventario/lotes", {
-        sku_id: Number(skuId),
-        numero_lote: numeroLote,
-        fecha_fabricacion: fechaFab || null,
-        fecha_vencimiento: fechaVenc || null,
-      });
-      setShowForm(false);
-      setSkuId(""); setNumeroLote(""); setFechaFab(""); setFechaVenc("");
-      load();
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Error al crear lote");
-    }
+      await api.post("/inventario/lotes", { sku_id: Number(skuId), numero_lote: numeroLote, fecha_fabricacion: fechaFab || null, fecha_vencimiento: fechaVenc || null });
+      toast.success("Lote creado");
+      setShowForm(false); setSkuId(""); setNumeroLote(""); setFechaFab(""); setFechaVenc(""); load();
+    } catch (err: any) { setError(err.response?.data?.detail || "Error al crear lote"); }
   };
 
+  const stats = useMemo(() => ({ total: lotes.length, activos: lotes.filter((l) => l.activo).length, porVencer: alertas.length }), [lotes, alertas]);
+  const lotesFiltrados = lotes.filter((l) => !search || `${l.numero_lote} ${l.sku_codigo}`.toLowerCase().includes(search.toLowerCase()));
+
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 20 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--text)" }}>Lotes</h2>
-        <button onClick={() => setShowForm(!showForm)} style={btnPri}>+ Nuevo Lote</button>
+    <div style={{ animation: "fadeInUp .45s ease forwards" }}>
+      <div className="ui-head">
+        <div><h1 className="ui-title">Lotes</h1><p className="ui-subtitle">Trazabilidad por lote y control de vencimientos</p></div>
+        <button className="ui-btn-primary" onClick={() => setShowForm(true)}><i className="fas fa-plus" /> Nuevo lote</button>
       </div>
 
-      <div style={{ display: "flex", gap: 0, marginBottom: 16 }}>
-        <button onClick={() => setTab("lotes")} style={{ ...tabBtn, borderBottom: tab === "lotes" ? "2px solid #6366f1" : "2px solid transparent", color: tab === "lotes" ? "#6366f1" : "#6b7280" }}>Lotes</button>
-        <button onClick={() => setTab("alertas")} style={{ ...tabBtn, borderBottom: tab === "alertas" ? "2px solid #6366f1" : "2px solid transparent", color: tab === "alertas" ? "#6366f1" : "#6b7280" }}>
-          Vencimiento ({alertas.length})
-        </button>
+      <div className="ui-stats">
+        <div className="ui-stat"><div className="ui-stat-top"><span className="ui-stat-lbl">Total lotes</span><i className="fas fa-layer-group" style={{ color: "var(--primary)" }} /></div><div className="ui-stat-val">{stats.total}</div></div>
+        <div className="ui-stat"><div className="ui-stat-top"><span className="ui-stat-lbl">Activos</span><i className="fas fa-circle-check" style={{ color: "var(--success-text)" }} /></div><div className="ui-stat-val" style={{ color: "var(--success-text)" }}>{stats.activos}</div></div>
+        <div className="ui-stat"><div className="ui-stat-top"><span className="ui-stat-lbl">Por vencer</span><i className="fas fa-clock" style={{ color: "var(--danger)" }} /></div><div className="ui-stat-val" style={{ color: "var(--danger)" }}>{stats.porVencer}</div></div>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleCreate} style={{ ...card, marginBottom: 20, maxWidth: 600 }}>
-          <h3 style={{ margin: "0 0 12px", fontSize: 15 }}>Nuevo Lote</h3>
-          {error && <div style={{ background: "var(--danger-bg)", color: "var(--danger)", padding: "8px 12px", borderRadius: "var(--radius-sm)", marginBottom: 12, fontSize: 13 }}>{error}</div>}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-            <div><label style={lbl}>SKU *</label><select value={skuId} onChange={(e) => setSkuId(e.target.value)} style={inp} required><option value="">Seleccionar</option>{skus.map((s) => <option key={s.id} value={s.id}>{s.codigo_sku} - {s.descripcion}</option>)}</select></div>
-            <div><label style={lbl}>Número Lote *</label><input value={numeroLote} onChange={(e) => setNumeroLote(e.target.value.toUpperCase())} style={inp} required /></div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-            <div><label style={lbl}>F. Fabricación</label><input type="date" value={fechaFab} onChange={(e) => setFechaFab(e.target.value)} style={inp} /></div>
-            <div><label style={lbl}>F. Vencimiento</label><input type="date" value={fechaVenc} onChange={(e) => setFechaVenc(e.target.value)} style={inp} /></div>
-          </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button type="submit" style={btnPri}>Crear Lote</button>
-            <button type="button" onClick={() => setShowForm(false)} style={btnSec}>Cancelar</button>
-          </div>
-        </form>
-      )}
+      <div className="ui-toolbar">
+        <div className="ui-chips">
+          <button className={`ui-chip ${tab === "lotes" ? "active" : ""}`} onClick={() => setTab("lotes")}>Lotes<span className="ui-chip-count">{lotes.length}</span></button>
+          <button className={`ui-chip ${tab === "alertas" ? "active" : ""}`} onClick={() => setTab("alertas")}>Vencimiento<span className="ui-chip-count">{alertas.length}</span></button>
+        </div>
+        {tab === "lotes" && <div className="ui-search-wrap" style={{ marginLeft: "auto" }}><i className="fas fa-search" /><input className="ui-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por lote o SKU..." /></div>}
+      </div>
 
       {tab === "lotes" ? (
-        <div style={card}>
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
-            <thead><tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-              <th style={th}>Lote</th><th style={th}>SKU</th><th style={th}>F. Fab.</th><th style={th}>F. Venc.</th><th style={th}>Activo</th>
-            </tr></thead>
+        <div className="ui-table-wrap">
+          <table className="ui-table">
+            <thead><tr><th>Lote</th><th>SKU</th><th>Fabricación</th><th>Vencimiento</th><th>Estado</th></tr></thead>
             <tbody>
-              {loading ? <tr><td colSpan={5} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Cargando...</td></tr>
-              : lotes.length === 0 ? <tr><td colSpan={5} style={{ ...td, textAlign: "center", color: "var(--text-muted)" }}>Sin lotes</td></tr>
-              : lotes.map((l) => (
-                <tr key={l.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
-                  <td style={{ ...td, fontWeight: 600, color: "var(--primary)" }}>{l.numero_lote}</td>
-                  <td style={td}>{l.sku_codigo}</td>
-                  <td style={td}>{l.fecha_fabricacion ? new Date(l.fecha_fabricacion).toLocaleDateString() : "-"}</td>
-                  <td style={td}>{l.fecha_vencimiento ? new Date(l.fecha_vencimiento).toLocaleDateString() : "-"}</td>
-                  <td style={td}><Badge color={l.activo ? "success" : "danger"}>{l.activo ? "Activo" : "Inactivo"}</Badge></td>
+              {loading ? <tr><td colSpan={5} style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>Cargando...</td></tr>
+              : lotesFiltrados.length === 0 ? <tr><td colSpan={5} className="ui-empty"><i className="fas fa-layer-group" />No hay lotes</td></tr>
+              : lotesFiltrados.map((l) => (
+                <tr key={l.id} style={{ borderBottom: "1px solid var(--row-border)" }}>
+                  <td><span className="ui-code">{l.numero_lote}</span></td>
+                  <td className="ui-mono" style={{ color: "var(--text-primary)", fontWeight: 600 }}>{l.sku_codigo}</td>
+                  <td>{fmtFecha(l.fecha_fabricacion)}</td>
+                  <td>{fmtFecha(l.fecha_vencimiento)}</td>
+                  <td><span className="ui-badge" style={{ background: l.activo ? "var(--success-bg)" : "var(--danger-bg)", color: l.activo ? "var(--success-text)" : "var(--danger-text)" }}>{l.activo ? "Activo" : "Inactivo"}</span></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       ) : (
-        <div style={card}>
+        <div className="ui-table-wrap">
           {alertas.length === 0 ? (
-            <div style={{ textAlign: "center", padding: 30, color: "var(--success)" }}>✅ No hay lotes próximos a vencer</div>
+            <div style={{ textAlign: "center", padding: 40 }}><i className="fas fa-circle-check" style={{ fontSize: 32, color: "var(--success-text)", marginBottom: 10 }} /><div style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>No hay lotes próximos a vencer</div></div>
           ) : (
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead><tr style={{ borderBottom: "1px solid #e5e7eb" }}>
-                <th style={th}>Lote</th><th style={th}>SKU</th><th style={th}>Descripción</th><th style={th}>Vence</th><th style={{ ...th, textAlign: "right" }}>Días</th>
-              </tr></thead>
+            <table className="ui-table">
+              <thead><tr><th>Lote</th><th>SKU</th><th>Descripción</th><th>Vence</th><th style={{ textAlign: "right" }}>Días</th></tr></thead>
               <tbody>
-                {alertas.map((a) => (
-                  <tr key={a.id} style={{ borderBottom: "1px solid #f3f4f6", background: a.dias_restantes <= 7 ? "#fef2f2" : "transparent" }}>
-                    <td style={{ ...td, fontWeight: 600 }}>{a.numero_lote}</td>
-                    <td style={td}>{a.sku_codigo}</td>
-                    <td style={td}>{a.sku_descripcion}</td>
-                    <td style={td}>{new Date(a.fecha_vencimiento).toLocaleDateString()}</td>
-                    <td style={{ ...td, textAlign: "right", fontWeight: 600, color: a.dias_restantes <= 7 ? "#dc2626" : "#f59e0b" }}>{a.dias_restantes} días</td>
-                  </tr>
-                ))}
+                {alertas.map((a) => {
+                  const crit = a.dias_restantes <= 7;
+                  return (
+                    <tr key={a.id} style={{ borderBottom: "1px solid var(--row-border)" }}>
+                      <td><span className="ui-code">{a.numero_lote}</span></td>
+                      <td className="ui-mono">{a.sku_codigo}</td>
+                      <td style={{ color: "var(--text-primary)", fontWeight: 500 }}>{a.sku_descripcion}</td>
+                      <td>{fmtFecha(a.fecha_vencimiento)}</td>
+                      <td style={{ textAlign: "right" }}><span className="ui-badge" style={{ background: crit ? "var(--danger-bg)" : "var(--warning-bg)", color: crit ? "var(--danger-text)" : "var(--warning-text)" }}>{a.dias_restantes} días</span></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
         </div>
       )}
+
+      <Modal isOpen={showForm} title="Nuevo lote" onClose={() => setShowForm(false)} maxWidth={560}>
+        <form onSubmit={handleCreate}>
+          {error && <div className="ui-error">{error}</div>}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div className="ui-field" style={{ margin: 0 }}><label>SKU *</label><select value={skuId} onChange={(e) => setSkuId(e.target.value)} className="ui-input" required><option value="">Seleccionar</option>{skus.map((s) => <option key={s.id} value={s.id}>{s.codigo_sku} - {s.descripcion}</option>)}</select></div>
+            <div className="ui-field" style={{ margin: 0 }}><label>Número de lote *</label><input value={numeroLote} onChange={(e) => setNumeroLote(e.target.value.toUpperCase())} className="ui-input" required /></div>
+            <div className="ui-field" style={{ margin: 0 }}><label>Fecha fabricación</label><input type="date" value={fechaFab} onChange={(e) => setFechaFab(e.target.value)} className="ui-input" /></div>
+            <div className="ui-field" style={{ margin: 0 }}><label>Fecha vencimiento</label><input type="date" value={fechaVenc} onChange={(e) => setFechaVenc(e.target.value)} className="ui-input" /></div>
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16 }}>
+            <button type="button" onClick={() => setShowForm(false)} className="ui-btn-ghost">Cancelar</button>
+            <button type="submit" className="ui-btn-primary">Crear lote</button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }
-
-const card: React.CSSProperties = { background: "var(--surface)", padding: 20, borderRadius: "var(--radius-lg)", boxShadow: "var(--shadow)", overflowX: "auto" };
-const btnPri: React.CSSProperties = { padding: "8px 16px", background: "var(--primary)", color: "#fff", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const btnSec: React.CSSProperties = { padding: "8px 16px", background: "#e5e7eb", color: "var(--text)", border: "none", borderRadius: "var(--radius-sm)", cursor: "pointer", fontSize: 13, fontWeight: 600 };
-const inp: React.CSSProperties = { width: "100%", padding: "8px 12px", border: "1px solid var(--border)", borderRadius: "var(--radius-sm)", fontSize: 14, boxSizing: "border-box" };
-const lbl: React.CSSProperties = { display: "block", marginBottom: 4, fontSize: 13, color: "var(--text)" };
-const th: React.CSSProperties = { padding: "10px 12px", textAlign: "left", fontSize: 12, color: "var(--text-secondary)", textTransform: "uppercase", fontWeight: 600 };
-const td: React.CSSProperties = { padding: "10px 12px", fontSize: 14 };
-const tabBtn: React.CSSProperties = { background: "none", border: "none", padding: "8px 16px", cursor: "pointer", fontSize: 14, fontWeight: 600, fontFamily: "inherit" };

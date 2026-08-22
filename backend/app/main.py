@@ -9,7 +9,7 @@ from app.database import async_session
 from app.middleware import AuditMiddleware, SoloLecturaMiddleware
 from app.models import Plan, PlatformAdmin
 from app.models.empresa import IntervaloPlan
-from app.routers import audit, auth, empresas, inventario, pos, skus, usuarios, compras, dashboard, ventas, cobranza, ia
+from app.routers import audit, auth, empresas, inventario, pos, skus, usuarios, compras, dashboard, ventas, cobranza, ia, negocios
 from app.routers.platform import auth as platform_auth, planes as platform_planes, empresas as platform_empresas
 from app.utils.security import hash_password
 
@@ -93,6 +93,7 @@ app.add_middleware(AuditMiddleware)
 app.add_middleware(SoloLecturaMiddleware)
 
 app.include_router(auth.router)
+app.include_router(negocios.router)
 app.include_router(audit.router)
 app.include_router(usuarios.router)
 app.include_router(empresas.router)

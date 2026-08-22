@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import api from "../../lib/api";
 import Modal from "../../components/Modal";
 import Badge from "../../components/Badge";
@@ -15,6 +16,11 @@ export default function BodegasPage() {
   const [error, setError] = useState("");
   const toast = useToast();
 
+  // Bodega a enfocar cuando se llega desde otro módulo (?focus=ID): scroll + resaltado.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [highlight, setHighlight] = useState<number | null>(null);
+  const navigate = useNavigate();
+
   const load = async () => {
     const bRes = await api.get("/inventario/bodegas");
     setBodegas(bRes.data);
@@ -23,6 +29,24 @@ export default function BodegasPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  // Cuando ya cargaron las bodegas y hay ?focus=ID, desplázate a esa tarjeta y resáltala.
+  useEffect(() => {
+    if (loading) return;
+    const focus = searchParams.get("focus");
+    if (!focus) return;
+    const id = Number(focus);
+    if (!bodegas.some((b) => b.id === id)) return;
+    setHighlight(id);
+    const t = setTimeout(() => {
+      document.getElementById(`bodega-card-${id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 250);
+    const t2 = setTimeout(() => setHighlight(null), 3200);
+    // Limpia el parámetro para que un refresh no vuelva a resaltar.
+    searchParams.delete("focus");
+    setSearchParams(searchParams, { replace: true });
+    return () => { clearTimeout(t); clearTimeout(t2); };
+  }, [loading, bodegas]);
 
   const getStockPorBodega = (bodegaId: number) =>
     stockData.filter(s => s.bodega_id === bodegaId).reduce((a, s) => a + s.cantidad, 0);
@@ -112,17 +136,28 @@ export default function BodegasPage() {
                 const stock = getStockPorBodega(b.id);
                 const skus = getSkusPorBodega(b.id);
                 const pctCap = b.capacidad && b.capacidad > 0 ? Math.round((stock / b.capacidad) * 100) : 0;
+                const isHi = highlight === b.id;
                 return (
-                  <div key={b.id} style={{
-                    background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "var(--card-radius)",
-                    padding: 22, boxShadow: "var(--card-shadow)", position: "relative", overflow: "hidden",
+                  <div key={b.id} id={`bodega-card-${b.id}`} style={{
+                    background: "var(--bg-card)", borderRadius: "var(--card-radius)",
+                    padding: 22, position: "relative", overflow: "hidden",
+                    border: isHi ? "2px solid var(--accent)" : "1px solid var(--border)",
+                    boxShadow: isHi ? "0 0 0 4px var(--accent-glow), var(--card-shadow)" : "var(--card-shadow)",
                     animation: `fadeInUp .5s ease forwards`, animationDelay: `${0.25 + i * 0.05}s`, opacity: 0,
+                    transition: "border-color .3s, box-shadow .3s",
                   }}>
                     <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 3, borderRadius: "var(--card-radius) var(--card-radius) 0 0", background: b.activa ? "var(--c3)" : "var(--c4)" }} />
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 }}>
                       <div style={{ width: 42, height: 42, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18,
                         background: b.activa ? "var(--c3-soft)" : "var(--c4-soft)", color: b.activa ? "var(--c3)" : "var(--c4)",
                       }}><i className="fas fa-warehouse" /></div>
+                      <button
+                        onClick={() => navigate(`/inventario/stock?bodega=${b.id}`)}
+                        title={`Ver existencias de ${b.nombre}`}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border)", background: "transparent", color: "var(--text-secondary)", fontSize: 12, fontWeight: 600, fontFamily: "inherit", cursor: "pointer", transition: "all .2s" }}
+                      >
+                        <i className="fas fa-boxes-stacked" style={{ fontSize: 11 }} /> Ver stock
+                      </button>
                     </div>
                     <div style={{ fontFamily: "'Space Grotesk'", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>{b.nombre}</div>
                     <div style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5, marginBottom: 16 }}>
