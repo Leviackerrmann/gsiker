@@ -51,6 +51,8 @@ class VentaPOSRequest(BaseModel):
     # parciales o vacíos: el saldo queda como cuenta por cobrar del cliente.
     pagos: list[PagoRequest] = Field(default_factory=list)
     a_credito: bool = False
+    # Descuento a nivel de venta (0–100 %). El total se calcula restándolo del bruto.
+    descuento_porcentaje: float = Field(default=0, ge=0, le=100)
     # Id único por venta (lo genera el frontend) para evitar duplicados por doble-clic.
     idempotency_key: str | None = Field(default=None, max_length=64)
 
@@ -85,6 +87,8 @@ class VentaPOSResponse(BaseModel):
     subtotal: float
     impuesto_porcentaje: float
     impuesto_total: float
+    descuento_porcentaje: float = 0
+    descuento_monto: float = 0
     total: float
     estado: str
     items: list[ItemVentaPOSResponse]

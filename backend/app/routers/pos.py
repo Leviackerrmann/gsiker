@@ -103,6 +103,7 @@ async def crear_venta(
             cliente_id=body.cliente_id,
             usuario_id=current_user.id,
             a_credito=body.a_credito,
+            descuento_porcentaje=body.descuento_porcentaje,
             idempotency_key=body.idempotency_key,
         )
     except (pos_service.POSError, StockInsuficiente) as exc:

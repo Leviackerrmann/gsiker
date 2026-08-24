@@ -108,6 +108,7 @@ async def procesar_venta_pos(
     cliente_id: int | None = None,
     usuario_id: int | None = None,
     a_credito: bool = False,
+    descuento_porcentaje: float = 0.0,
     idempotency_key: str | None = None,
 ) -> VentaPOS:
     """Venta rápida de mostrador: descuenta stock, calcula el desglose de IVA
@@ -207,8 +208,13 @@ async def procesar_venta_pos(
         )
         await actualizar_stock(db, empresa_id, sku.id, bodega_id, cantidad, TipoMovimiento.SALIDA)
 
-    total = round(total, 2)
-    # IVA incluido: se extrae del total, no se suma encima.
+    # `total` acumuló el bruto (suma de líneas, IVA incluido). Se aplica el
+    # descuento a nivel de venta y el resto se calcula sobre el total ya rebajado.
+    bruto = round(total, 2)
+    pct = max(0.0, min(float(descuento_porcentaje or 0), 100.0))
+    descuento_monto = round(bruto * pct / 100, 2)
+    total = round(bruto - descuento_monto, 2)
+    # IVA incluido: se extrae del total (ya con descuento), no se suma encima.
     impuesto_total = round(total - total / (1 + iva_porcentaje / 100), 2)
     subtotal = round(total - impuesto_total, 2)
 
@@ -236,6 +242,8 @@ async def procesar_venta_pos(
         if abs(suma_pagos - total) > _EPS:
             raise POSError(f"Los pagos ({suma_pagos}) no cubren el total ({total})")
 
+    venta.descuento_porcentaje = pct
+    venta.descuento_monto = descuento_monto
     venta.subtotal = subtotal
     venta.impuesto_total = impuesto_total
     venta.total = total

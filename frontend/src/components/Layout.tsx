@@ -3,15 +3,21 @@ import { Outlet } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import BackgroundGlows from "./BackgroundGlows";
 import { useMediaQuery } from "../lib/useMediaQuery";
+import { ChromeContext } from "../contexts/ChromeContext";
 
 export default function Layout() {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const closeSidebar = () => setOpen(false);
+  // En escritorio, `collapsed` (lo activa el POS) esconde el sidebar para dar
+  // espacio máximo; el módulo muestra su propio botón para volver a expandirlo.
+  const hideDesktopSidebar = collapsed && !isMobile;
 
   return (
+    <ChromeContext.Provider value={{ collapsed, setCollapsed }}>
     <div style={{ display: "flex", minHeight: "100vh" }}>
-      <Sidebar mobile={isMobile} open={open} onClose={closeSidebar} />
+      {!hideDesktopSidebar && <Sidebar mobile={isMobile} open={open} onClose={closeSidebar} />}
 
       {/* Overlay oscuro cuando el drawer está abierto en móvil */}
       {isMobile && open && (
@@ -21,7 +27,7 @@ export default function Layout() {
         />
       )}
 
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", marginLeft: isMobile ? 0 : 248, transition: "var(--transition)" }}>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", marginLeft: isMobile || hideDesktopSidebar ? 0 : 248, transition: "var(--transition)" }}>
         {/* Barra superior solo en móvil (acceso al menú) */}
         {isMobile && (
           <header style={{
@@ -52,5 +58,6 @@ export default function Layout() {
         </main>
       </div>
     </div>
+    </ChromeContext.Provider>
   );
 }

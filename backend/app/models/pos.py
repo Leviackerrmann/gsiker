@@ -79,6 +79,11 @@ class VentaPOS(TenantMixin, Base):
     subtotal: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     impuesto_porcentaje: Mapped[float] = mapped_column(Float, default=12.0, nullable=False)
     impuesto_total: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    # Descuento a nivel de venta (trazabilidad): % aplicado y monto en dinero.
+    # Los ítems conservan su precio pleno; el descuento se registra aquí y se resta
+    # del total (bruto = total + descuento_monto).
+    descuento_porcentaje: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
+    descuento_monto: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     total: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     estado: Mapped[EstadoVentaPOS] = mapped_column(
         Enum(EstadoVentaPOS), default=EstadoVentaPOS.COMPLETADA, nullable=False

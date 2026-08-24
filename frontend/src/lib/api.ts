@@ -17,8 +17,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+      // Un 401 del propio intento de login/registro significa "credenciales
+      // inválidas": lo maneja el formulario (muestra el aviso). Recargar aquí
+      // borraría ese mensaje y devolvería al usuario a la pantalla inicial.
+      // El redirect global es solo para sesiones ya iniciadas que expiran.
+      const url: string = error.config?.url ?? "";
+      const esIntentoAuth = url.includes("/auth/login") || url.includes("/auth/register");
+      if (!esIntentoAuth) {
+        localStorage.removeItem("token");
+        window.location.href = "/login";
+      }
     }
     return Promise.reject(error);
   }

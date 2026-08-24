@@ -84,6 +84,7 @@ services:
     build: ./backend
     profiles: ["telegram"]
     command: ["python", "-m", "app.telegram_bot"]
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy

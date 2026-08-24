@@ -83,10 +83,10 @@ def resolver_proveedor() -> ProveedorConfig:
 def estado() -> dict:
     cfg = resolver_proveedor()
     disponible = settings.IA_ENABLED and cfg.disponible
+    # No exponemos proveedor ni modelo: el cliente solo necesita saber si la IA
+    # está disponible (y, si no, el motivo). Qué modelo/proveedor usamos es interno.
     return {
         "disponible": disponible,
-        "proveedor": cfg.provider,
-        "modelo": cfg.model if disponible else None,
         "motivo": None if disponible else cfg.motivo,
     }
 

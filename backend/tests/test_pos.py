@@ -64,6 +64,33 @@ async def test_venta_pos_descuenta_stock_y_desglosa_iva(client, empresa_factory)
     assert fila["cantidad"] == 98.0
 
 
+async def test_venta_pos_con_descuento_trazable(client, empresa_factory):
+    headers = await empresa_factory("Tienda D", "cajero_d")
+    bodega_id, sku_id, caja_id = await _setup_tienda(client, headers)
+
+    # 2 × Q56 = Q112 bruto. Descuento 10% → Q11.20 → total Q100.80. Se paga exacto.
+    venta = await client.post("/api/pos/ventas", json={
+        "caja_sesion_id": caja_id,
+        "bodega_id": bodega_id,
+        "items": [{"sku_id": sku_id, "cantidad": 2, "precio_unitario": 56.0}],
+        "descuento_porcentaje": 10,
+        "pagos": [{"metodo": "efectivo", "monto": 100.80, "monto_recibido": 100.80}],
+    }, headers=headers)
+    assert venta.status_code == 201, venta.text
+    v = venta.json()
+
+    # Trazabilidad: se registra el % y el monto del descuento.
+    assert v["descuento_porcentaje"] == 10.0
+    assert v["descuento_monto"] == 11.2
+    # El total ya rebajado; IVA (12%) incluido: 100.80 = 90 + 10.80.
+    assert v["total"] == 100.8
+    assert v["subtotal"] == 90.0
+    assert v["impuesto_total"] == 10.8
+    # Los ítems conservan su precio pleno (no se pierde el margen de línea).
+    assert v["items"][0]["precio_unitario"] == 56.0
+    assert v["items"][0]["precio_total"] == 112.0
+
+
 async def test_venta_falla_si_pagos_no_cubren_total(client, empresa_factory):
     headers = await empresa_factory("Tienda B", "cajero_b")
     bodega_id, sku_id, caja_id = await _setup_tienda(client, headers)

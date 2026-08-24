@@ -51,7 +51,6 @@ function hace(ms: number): string {
 export default function AsistentePage() {
   const { empresa, user } = useAuth();
   const [disponible, setDisponible] = useState<boolean | null>(null);
-  const [modelo, setModelo] = useState<string | null>(null);
   const [convs, setConvs] = useState<Conversacion[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -119,7 +118,7 @@ export default function AsistentePage() {
   };
 
   useEffect(() => {
-    api.get("/ia/estado").then((r) => { setDisponible(r.data.disponible); setModelo(r.data.modelo); }).catch(() => setDisponible(false));
+    api.get("/ia/estado").then((r) => { setDisponible(r.data.disponible); }).catch(() => setDisponible(false));
     cargarConsumo();
   }, []);
 
@@ -147,7 +146,7 @@ export default function AsistentePage() {
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); enviar(input); } };
 
   const reqDim = consumo?.requests;
-  const subtitulo = disponible === false ? "No configurado" : planSinIa ? "Tu plan no incluye IA" : `Conectado${modelo ? ` · ${modelo}` : ""}`;
+  const subtitulo = disponible === false ? "No configurado" : planSinIa ? "Tu plan no incluye IA" : "Conectado";
   const ordenadas = [...convs].sort((a, b) => b.actualizado - a.actualizado);
 
   return (
